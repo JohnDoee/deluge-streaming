@@ -1,5 +1,5 @@
 from twisted.web.resource import Resource as TwistedResource, _computeAllowedMethods
-from twisted.web import server, guard
+from twisted.web import server
 from twisted.internet import defer
 
 

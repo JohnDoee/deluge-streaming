@@ -39,6 +39,7 @@
 
 import base64
 import json
+import logging
 import math
 import os
 import urllib
@@ -55,6 +56,8 @@ from deluge.log import LOG as log
 from deluge.plugins.pluginbase import CorePluginBase
 
 from .resource import Resource
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_PREFS = {
     'ip': '127.0.0.1',
@@ -200,7 +203,9 @@ class TorrentFile(object):
         self.update_chunk_priority()
     
     def is_buffered(self, expected_pieces):
-        if [x for x in self.torrent.status.pieces[self.first_chunk:self.first_chunk+expected_pieces+1] if not x]:
+        buffer_status = [x for x in self.torrent.status.pieces[self.first_chunk:self.first_chunk+expected_pieces+1] if not x]
+        logger.debug('Current buffer status: %r' % buffer_status) 
+        if buffer_status:
             return False
         else:
             return True
@@ -228,9 +233,9 @@ class TorrentFile(object):
         tell = self.tell()
         chunk, end_of_chunk = self.get_chunk(tell)
         self.last_requested_chunk = chunk
-        print 'waiting for chunk', chunk, size, tell
+        logger.debug('waiting for chunk %s, %s, %s' % (chunk, size, tell))
         yield self.wait_chunk_complete(chunk)
-        print 'done waiting', chunk, size, tell
+        logger.debug('done waiting %s, %s, %s' % (chunk, size, tell))
         defer.returnValue(self.file_handler.read(min(end_of_chunk-tell, size)))
     
     def seek(self, offset, whence=os.SEEK_SET):
@@ -338,12 +343,12 @@ class Core(CorePluginBase):
         
         tor.resume()
         
-        EXPECTED_PERCENT = 5.0
+        EXPECTED_PERCENT = 2.0
         EXPECTED_SIZE = 5*1024*1024
         
         percent_pieces = int(math.ceil((len(f['pieces']) / 100.0) * EXPECTED_PERCENT))
         size_pieces = int(min(math.ceil((EXPECTED_SIZE * 1.0) / piece_length), f['pieces']))
-        expected_pieces = max(percent_pieces, size_pieces)
+        expected_pieces = max(percent_pieces, size_pieces) # we need to download either 5% or 5MB of the file before allowing stream.
         
         fp = os.path.join(status['save_path'], f['path'])
         

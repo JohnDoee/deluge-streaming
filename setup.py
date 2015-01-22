@@ -45,8 +45,24 @@ __author_email__ = "johndoee@tidalstream.org"
 __version__ = "0.1"
 __url__ = "https://github.com/JohnDoee/deluge-streaming"
 __license__ = "GPLv3"
-__description__ = ""
-__long_description__ = """"""
+__description__ = "Enables streaming of files while downloading them."
+__long_description__ = """This plugin adds a new entry to the file list context menu that enables
+the user to stream a file using HTTP.
+
+Technically, it tries to download the part of a file the user requests and
+downloads ahead, this enables seeking in video files.
+
+## How to use
+
+* Install plugin
+* Select a torrent
+* Select _files_ tab
+* Right-click a file.
+* Click _Stream this file_
+* **WAIT**, it will try to buffer the first pieces of the file before generating a link (no feedback yet).
+* Select the link, open it in a media player, e.g. VLC or MPC
+
+If you want to stream from a non-local computer, e.g. your seedbox, you will need to change the IP in option to the external server ip."""
 __pkg_data__ = {__plugin_name__.lower(): ["template/*", "data/*"]}
 
 setup(
