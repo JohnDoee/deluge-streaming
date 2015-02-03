@@ -341,8 +341,8 @@ class TorrentHandler(object):
         
         self.priorities[f['index']] = 3
         self.update_priorities()
-        
-        self.torrent.resume()
+        if progress < 1:
+            self.torrent.resume()
         
         percent_pieces = int(math.ceil((len(f['pieces']) / 100.0) * EXPECTED_PERCENT))
         size_pieces = int(min(math.ceil((EXPECTED_SIZE * 1.0) / piece_length), f['pieces']))
