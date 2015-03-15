@@ -73,7 +73,7 @@ from .filelike import FilelikeObjectResource
 MIN_QUEUE_CHUNKS = 6
 EXPECTED_PERCENT = 0.3
 EXPECTED_SIZE = 5*1024*1024
-HANDLERS_TIMEOUT = timedelta(minutes=3)
+HANDLERS_TIMEOUT = timedelta(hours=12)
 
 class UnknownTorrentException(Exception):
     pass
@@ -164,6 +164,7 @@ class TorrentFile(object):
         self.is_closed = False
         self.is_active = False
         self.last_activity = datetime.now()
+        self.end_chunks = []
         
         self.first_chunk_end = self.chunk_size * (self.first_chunk + 1) - offset
         
@@ -186,7 +187,13 @@ class TorrentFile(object):
     
     def prepare_torrent(self, buffer_pieces):
         self.torrent_handler.schedule_chunk(self.first_chunk, 0)
-        self.torrent_handler.schedule_chunk(self.last_chunk, 1)
+        self.torrent_handler.schedule_chunk(self.last_chunk, 0)
+        
+        self.end_chunks.append(self.last_chunk)
+        
+        if self.first_chunk != self.last_chunk:
+            self.torrent_handler.schedule_chunk(self.last_chunk-1, 0)
+            self.end_chunks.append(self.last_chunk-1)
         
         for chunk, chunk_status in enumerate(self.torrent_handler.torrent.status.pieces[self.first_chunk:min(self.first_chunk+buffer_pieces, self.last_chunk)+1], self.first_chunk):
             self.torrent_handler.schedule_chunk(chunk, chunk-self.first_chunk)
@@ -301,6 +308,13 @@ class TorrentHandler(object):
                 
                 offset = tf.last_requested_chunk + 1
                 
+                current_buffer_offset = 5
+                for chunk in tf.end_chunks:
+                    if not self.torrent.status.pieces[chunk]:
+                        logger.info('End chunks are not downloaded, setting buffer offset differently')
+                        current_buffer_offset = 20
+                        break
+                
                 status_increase_count = 0
                 current_buffer = 0
                 found_buffer_end = False
@@ -319,7 +333,7 @@ class TorrentHandler(object):
                     elif not found_buffer_end:
                         current_buffer += 1
                     
-                    if status_increase_count >= max(MIN_QUEUE_CHUNKS, current_buffer-5):
+                    if status_increase_count >= max(MIN_QUEUE_CHUNKS, current_buffer-current_buffer_offset):
                         break
                 
                 handled_heads.append(tf.last_requested_chunk)
