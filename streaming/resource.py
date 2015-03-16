@@ -1,16 +1,40 @@
 from twisted.web.resource import Resource as TwistedResource, _computeAllowedMethods
-from twisted.web import server
+from twisted.web import server, error
 from twisted.internet import defer
 
 
 class Resource(TwistedResource):
     content_type = 'application/json'
     
-
-    def render(self, request):
+    def __init__(self, username=None, password=None, *args, **kwargs):
+        self.username = username
+        self.password = password
+        TwistedResource.__init__(self, *args, **kwargs)
+    
+    def render(self, request): # Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
         """
         Adds support for deferred render methods
         """
+        auth_header = request.getHeader('Authorization')
+        
+        if self.username or self.password:
+            authenticated = False
+            if auth_header:
+                auth_header = auth_header.split(' ')
+                if len(auth_header) > 1 and auth_header[0] == 'Basic':
+                    userpass = auth_header[1].decode('base64').split(':')
+                    if len(userpass) == 2:
+                        username, password = userpass
+                        if self.username == username and self.password == password:
+                            authenticated = True
+                    
+            
+            if not authenticated:
+                print auth_header
+                print self.username, self.password
+                request.setResponseCode(401)
+                return 'Unauthorized'
+        
         m = getattr(self, 'render_' + request.method, None)
         if not m:
             # This needs to be here until the deprecated subclasses of the

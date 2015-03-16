@@ -66,6 +66,9 @@ DEFAULT_PREFS = {
     'ip': '127.0.0.1',
     'port': 46123,
     'allow_remote': False,
+    'reset_complete': True,
+    'remote_username': 'username',
+    'remote_password': 'password',
 }
 
 from .filelike import FilelikeObjectResource
@@ -109,9 +112,9 @@ class FileServeResource(resource.Resource):
 class AddTorrentResource(Resource):
     isLeaf = True
     
-    def __init__(self, client):
+    def __init__(self, client, *args, **kwargs):
         self.client = client
-        Resource.__init__(self)
+        Resource.__init__(self, *args, **kwargs)
     
     @defer.inlineCallbacks
     def render_POST(self, request):
@@ -131,9 +134,9 @@ class AddTorrentResource(Resource):
 class StreamResource(Resource):
     isLeaf = True
     
-    def __init__(self, client):
+    def __init__(self, client, *args, **kwargs):
         self.client = client
-        Resource.__init__(self)
+        Resource.__init__(self, *args, **kwargs)
     
     @defer.inlineCallbacks
     def render_GET(self, request):
@@ -151,7 +154,7 @@ class StreamResource(Resource):
 
 class TorrentFile(object):
     file_handler = None
-    def __init__(self, torrent_handler, file_path, torrent_file_path, size, chunk_size, offset):
+    def __init__(self, torrent_handler, file_path, torrent_file_path, size, chunk_size, offset, file_index):
         self.torrent_handler = torrent_handler
         self.file_path = file_path
         self.torrent_file_path = torrent_file_path
@@ -159,6 +162,7 @@ class TorrentFile(object):
         self.last_chunk = (offset + size) / chunk_size
         self.chunk_size = chunk_size
         self.offset = offset
+        self.file_index = file_index
         self.size = size
         self.last_requested_chunk = self.first_chunk
         self.is_closed = False
@@ -247,7 +251,8 @@ class TorrentFile(object):
             return self.file_handler.close()
     
     def copy(self):
-        tf = TorrentFile(self.torrent_handler, self.file_path, self.torrent_file_path, self.size, self.chunk_size, self.offset)
+        tf = TorrentFile(self.torrent_handler, self.file_path, self.torrent_file_path,
+                         self.size, self.chunk_size, self.offset, self.file_index)
         return tf
 
 class TorrentHandler(object):
@@ -256,7 +261,7 @@ class TorrentHandler(object):
         self.torrent_handle = torrent.handle
         self.torrent_id = torrent_id
         self.core = core
-        self.priorities = [0] * len(torrent.get_status(['files'])['files']) # TODO: get current priorities and use those instead
+        self.priorities = [0] * len(torrent.get_status(['files'])['files'])
         self.torrent_files = defaultdict(list)
         self.priorities_increased = {}
         # need to blackhole all pieces not downloaded yet
@@ -340,14 +345,30 @@ class TorrentHandler(object):
         
         return bool(handled_heads)
         
-    def update_chunk_priorities(self):
+    def update_chunk_priorities(self): # TODO: check if torrent still exists
+        file_progress = self.torrent.get_status(['file_progress'])['file_progress']
+        incomplete_files = False
+        
         for torrent_file_path, tfs in self.torrent_files.items():
             if not tfs:
+                logger.debug('No heads left for %r' % torrent_file_path)
                 del self.torrent_files[torrent_file_path]
+                continue
+            
+            tf = tfs[0]
+            if file_progress[tf.file_index] == 1.0:
+                logger.info('%s is already complete, skipping' % torrent_file_path)
                 continue
             
             if self.update_chunk_priority(tfs):
                 self.last_activity = datetime.now()
+            
+            incomplete_files = True
+        
+        if not incomplete_files and self.core.config['reset_complete'] and not all(self.priorities):
+            logger.info('We are not doing any file streamings, but not downloading all files, changing that.')
+            self.priorities = [1] * len(self.priorities)
+            self.update_priorities()
         
         if datetime.now() - self.last_activity > HANDLERS_TIMEOUT:
             logger.debug('Torrent handler idle, killing myself.')
@@ -385,8 +406,23 @@ class TorrentHandler(object):
         if progress == 1: # file is complete, no need to fire up all the torrent jazz
             defer.returnValue(static.File(fp))
         
+        self.priorities = [0] * len(self.priorities)
         self.priorities[f['index']] = 3
+        current_tfs = []
+        for tfs in self.torrent_files.values():
+            if not tfs:
+                continue
+            tf = tfs[0]
+            self.priorities[tf.file_index] = 3
+            current_tfs.append((tf, self.torrent_handle.piece_priorities()[tf.first_chunk:tf.last_chunk+1]))
+        
         self.update_priorities()
+        
+        for tf, chunk_status in current_tfs:
+            logger.info('Setting chunks to old status')
+            for i, chunk in enumerate(chunk_status, tf.first_chunk):
+                logger.debug('Setting status on chunk %s back to %s' % (i, chunk))
+                self.torrent_handle.piece_priority(i, chunk)
 
         self.torrent.resume()
         
@@ -394,7 +430,7 @@ class TorrentHandler(object):
         size_pieces = int(min(math.ceil((EXPECTED_SIZE * 1.0) / piece_length), f['pieces']))
         expected_pieces = max(percent_pieces, size_pieces) # we need to download either 5% or 5MB of the file before allowing stream.
         
-        tf = TorrentFile(self, fp, f['path'], f['size'], status['piece_length'], f['offset'])
+        tf = TorrentFile(self, fp, f['path'], f['size'], status['piece_length'], f['offset'], f['index'])
         
         if len(self.torrent_files[f['path']]) == 1:
             self.blackhole_all_pieces(tf.first_chunk, tf.last_chunk)
@@ -422,11 +458,14 @@ class Core(CorePluginBase):
         self.resource = Resource()
         self.resource.putChild('file', self.fsr)
         if self.config['allow_remote']:
-            self.resource.putChild('add_torrent', AddTorrentResource(self))
-            self.resource.putChild('stream', StreamResource(self))
+            self.resource.putChild('add_torrent', AddTorrentResource(username=self.config['remote_username'],
+                                                                     password=self.config['remote_password'],
+                                                                     client=self))
+            self.resource.putChild('stream', StreamResource(username=self.config['remote_username'],
+                                                            password=self.config['remote_password'],
+                                                            client=self))
         
         self.site = server.Site(self.resource)
-        self.listening = reactor.listenTCP(self.config.config['port'], self.site, interface=self.config.config['ip'])
         
         session = component.get("Core").session
         settings = session.get_settings()
@@ -434,6 +473,11 @@ class Core(CorePluginBase):
         session.set_settings(settings)
         
         self.torrent_handlers = {}
+        
+        try:
+            self.listening = reactor.listenTCP(self.config['port'], self.site, interface=self.config['ip'])
+        except:
+            self.listening = reactor.listenTCP(self.config['port'], self.site, interface='127.0.0.1')
 
     @defer.inlineCallbacks
     def disable(self):
@@ -500,5 +544,5 @@ class Core(CorePluginBase):
         defer.returnValue({
             'status': 'success',
             'url': 'http://%s:%s/file/%s/%s' % (self.config.config['ip'], self.config.config['port'],
-                                           self.fsr.add_file(tf), os.path.basename(tf.file_path))
+                                           self.fsr.add_file(tf), urllib.quote_plus(os.path.basename(tf.file_path)))
         })

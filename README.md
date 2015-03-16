@@ -39,5 +39,14 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 
 # Version Info
 
+## Version 0.3
+* Fixed bug when streaming multiple files.
+* Changed to try to prioritize end pieces more aggressively to not leave them hanging.
+* Added option to download rest of torrent when finished downloading the streamed torrent.
+* Added authentication to remote API.
+
+## Version 0.2
+* Improved buffering algorithm, not using only deadline anymore.
+
 ## Version 0.1
 * Initial working release

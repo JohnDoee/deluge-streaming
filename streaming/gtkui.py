@@ -84,7 +84,11 @@ class GtkUI(GtkPluginBase):
             "ip": self.glade.get_widget("input_ip").get_text(),
             "port": int(self.glade.get_widget("input_port").get_text()),
             "allow_remote": self.glade.get_widget("input_allow_remote").get_active(),
+            "reset_complete": self.glade.get_widget("input_reset_complete").get_active(),
+            "remote_username": self.glade.get_widget("input_remote_username").get_text(),
+            "remote_password": self.glade.get_widget("input_remote_password").get_text(),
         }
+        
         client.streaming.set_config(config)
 
     def on_show_prefs(self):
@@ -95,6 +99,9 @@ class GtkUI(GtkPluginBase):
         self.glade.get_widget("input_ip").set_text(config["ip"])
         self.glade.get_widget("input_port").set_text(str(config["port"]))
         self.glade.get_widget("input_allow_remote").set_active(config["allow_remote"])
+        self.glade.get_widget("input_reset_complete").set_active(config["reset_complete"])
+        self.glade.get_widget("input_remote_username").set_text(config["remote_username"])
+        self.glade.get_widget("input_remote_password").set_text(config["remote_password"])
 
     def on_menuitem_stream(self, data=None):
         torrent_id = component.get("TorrentView").get_selected_torrents()[0]
