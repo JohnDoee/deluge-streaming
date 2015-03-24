@@ -42,7 +42,7 @@ from setuptools import setup
 __plugin_name__ = "Streaming"
 __author__ = "John Doee"
 __author_email__ = "johndoee@tidalstream.org"
-__version__ = "0.2"
+__version__ = "0.3"
 __url__ = "https://github.com/JohnDoee/deluge-streaming"
 __license__ = "GPLv3"
 __description__ = "Enables streaming of files while downloading them."
