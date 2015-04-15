@@ -105,9 +105,13 @@ class FileServeResource(resource.Resource):
         if key not in self.file_mapping:
             return resource.NoResource().render(request)
         
-        tf = self.file_mapping[key].copy()
-        tf.open()
-        return FilelikeObjectResource(tf, tf.size).render_GET(request)
+        v = self.file_mapping[key]
+        if isinstance(v, static.File):
+            return v.render_GET(request)
+        else:
+            tf = v.copy()
+            tf.open()
+            return FilelikeObjectResource(tf, tf.size).render_GET(request)
 
 class AddTorrentResource(Resource):
     isLeaf = True
@@ -156,7 +160,7 @@ class TorrentFile(object):
     file_handler = None
     def __init__(self, torrent_handler, file_path, torrent_file_path, size, chunk_size, offset, file_index):
         self.torrent_handler = torrent_handler
-        self.file_path = file_path
+        self.file_path = self.path = file_path
         self.torrent_file_path = torrent_file_path
         self.first_chunk = offset / chunk_size
         self.last_chunk = (offset + size) / chunk_size
@@ -544,5 +548,5 @@ class Core(CorePluginBase):
         defer.returnValue({
             'status': 'success',
             'url': 'http://%s:%s/file/%s/%s' % (self.config.config['ip'], self.config.config['port'],
-                                           self.fsr.add_file(tf), urllib.quote_plus(os.path.basename(tf.file_path)))
+                                           self.fsr.add_file(tf), urllib.quote_plus(os.path.basename(tf.path)))
         })
