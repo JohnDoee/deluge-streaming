@@ -11,6 +11,11 @@ the user to stream a file using HTTP.
 Technically, it tries to download the part of a file the user requests and
 downloads ahead, this enables seeking in video files.
 
+## Where to download
+
+You can download this release on Github. Look for the "releases" tab on the repository page.
+Under that tab, eggs for Python 2.6 and 2.7 should exist.
+
 ## How to use
 
 * Install plugin
