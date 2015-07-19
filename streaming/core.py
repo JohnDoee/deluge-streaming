@@ -479,10 +479,13 @@ class Core(CorePluginBase):
         
         self.site = server.Site(self.resource)
         
-        session = component.get("Core").session
-        settings = session.get_settings()
-        settings['prioritize_partial_pieces'] = True
-        session.set_settings(settings)
+        try:
+            session = component.get("Core").session
+            settings = session.get_settings()
+            settings['prioritize_partial_pieces'] = True
+            session.set_settings(settings)
+        except AttributeError:
+            logger.warning('Unable to exclude partial pieces')
         
         self.torrent_handlers = {}
         
