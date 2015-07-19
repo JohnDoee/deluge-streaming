@@ -42,6 +42,7 @@ import json
 import logging
 import math
 import os
+import time
 import urllib
 
 from collections import defaultdict
@@ -324,11 +325,16 @@ class TorrentHandler(object):
                         current_buffer_offset = 20
                         break
                 
+                currently_downloading = set()
+                for peer in self.torrent.handle.get_peer_info():
+                    if peer.downloading_piece_index != -1:
+                        currently_downloading.add(peer.downloading_piece_index)
+                
                 status_increase_count = 0
                 current_buffer = 0
                 found_buffer_end = False
                 for chunk, chunk_status in enumerate(self.torrent.status.pieces[offset:tf.last_chunk+1], offset):
-                    if not chunk_status:
+                    if not chunk_status and chunk not in currently_downloading:
                         if not found_buffer_end:
                             logger.debug('Found buffer end at %s, have a buffer of %s' % (chunk, current_buffer))
                         found_buffer_end = True
@@ -339,7 +345,7 @@ class TorrentHandler(object):
                             self.torrent_handle.piece_priority(chunk, 1)
                         
                         status_increase_count += 1
-                    elif not found_buffer_end:
+                    elif not found_buffer_end and chunk not in currently_downloading:
                         current_buffer += 1
                     
                     if status_increase_count >= max(MIN_QUEUE_CHUNKS, current_buffer-current_buffer_offset):
@@ -350,6 +356,7 @@ class TorrentHandler(object):
         return bool(handled_heads)
         
     def update_chunk_priorities(self): # TODO: check if torrent still exists
+        start_time = time.time()
         file_progress = self.torrent.get_status(['file_progress'])['file_progress']
         incomplete_files = False
         
@@ -380,21 +387,22 @@ class TorrentHandler(object):
                 del self.core.torrent_handlers[self.torrent_id]
             return
         
-        reactor.callLater(2, self.update_chunk_priorities)
+        logger.debug('Took %s seconds to handle a loop' % (time.time() - start_time))
+        reactor.callLater(1, self.update_chunk_priorities)
     
     def blackhole_all_pieces(self, first_chunk, last_chunk):
         for chunk in range(first_chunk, last_chunk+1):
             self.torrent_handle.piece_priority(chunk, 0)
     
     @defer.inlineCallbacks
-    def get_file(self, filepath):
+    def get_file(self, filepath_or_index):
         status = self.torrent.get_status(['piece_length', 'files', 'file_priorities', 'file_progress', 'state', 'save_path'])
         pieces = self.torrent.status.pieces
         piece_length = status['piece_length']
         files = status['files']
         
-        for f, priority, progress in zip(files, status['file_priorities'], status['file_progress']):
-            if f['path'] == filepath:
+        for i, f, priority, progress in zip(range(len(files)), files, status['file_priorities'], status['file_progress']):
+            if i == filepath_or_index or f['path'] == filepath_or_index:
                 f['first_piece'] = f['offset'] / piece_length
                 f['last_piece'] = (f['offset'] + f['size']) / piece_length
                 f['pieces'] = pieces[f['first_piece']:f['last_piece']+1]
@@ -534,14 +542,14 @@ class Core(CorePluginBase):
     
     @export
     @defer.inlineCallbacks
-    def stream_torrent(self, tid, filepath):
+    def stream_torrent(self, tid, filepath_or_index):
         try:
             torrent_handler = yield self.get_torrent_handler(tid)
         except UnknownTorrentException: # torrent isn't added yet
             defer.returnValue({'status': 'error', 'message': 'torrent_not_found'})
         
         try:
-            tf = yield torrent_handler.get_file(filepath)
+            tf = yield torrent_handler.get_file(filepath_or_index)
         except UnknownFileException:
             defer.returnValue({'status': 'error', 'message': 'file_not_found'})
         

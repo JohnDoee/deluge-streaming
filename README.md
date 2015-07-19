@@ -37,11 +37,13 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 
 ## ToDo
 
-* Add support for the WebUI
-* There are a few situations where an uncaught exception is thrown.
 * Add feedback when preparing stream.
 
 # Version Info
+
+## Version 0.3.0
+* Added WebUI support
+* Improved scheduling algorithm
 
 ## Version 0.3
 * Fixed bug when streaming multiple files.
