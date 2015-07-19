@@ -31,20 +31,139 @@ Copyright:
     statement from all source files in the program, then also delete it here.
 */
 
+PreferencePage = Ext.extend(Ext.Panel, {
+    title: 'Streaming',
+    border: false,
+    layout: 'form',
+    
+    initComponent: function() {
+        PreferencePage.superclass.initComponent.call(this);
+        
+        var om = this.optionsManager = new Deluge.OptionsManager();
+        this.on('show', this.onPageShow, this);
+        
+        var fieldset = this.add({
+            xtype: 'fieldset',
+            border: false,
+            title: 'Streaming',
+            style: 'margin-bottom: 0px; padding-bottom: 0px; padding-top: 5px',
+            autoHeight: true,
+            labelWidth: 110,
+            defaultType: 'textfield',
+            defaults: {
+                width: 180,
+            }
+        });
+        
+        om.bind('port', fieldset.add({
+            name: 'port',
+            fieldLabel: _('Port'),
+            decimalPrecision: 0,
+            minValue: -1,
+            maxValue: 99999
+        }));
+        
+        om.bind('ip', fieldset.add({
+            name: 'ip',
+            fieldLabel: 'IP'
+        }));
+        
+        om.bind('reset_complete', fieldset.add({
+            xtype: 'checkbox',
+            name: 'reset_complete',
+            fieldLabel: 'Reset "do not download" when streamed file is complete',
+        }));
+        
+        om.bind('allow_remote', fieldset.add({
+            xtype: 'checkbox',
+            name: 'allow_remote',
+            fieldLabel: 'Allow remote control checkbox',
+        }));
+        
+        om.bind('remote_username', fieldset.add({
+            name: 'remote_username',
+            fieldLabel: 'Remote username'
+        }));
+        
+        om.bind('remote_password', fieldset.add({
+            name: 'remote_password',
+            inputType: 'password',
+            fieldLabel: 'Remote password'
+        }));
+    },
+
+    onApply: function() {
+        var changed = this.optionsManager.getDirty();
+        if (!Ext.isObjectEmpty(changed)) {
+            deluge.client.streaming.set_config(changed, {
+                success: this.onSetConfig,
+                scope: this
+            });
+    
+            for (var key in deluge.config) {
+                deluge.config[key] = this.optionsManager.get(key);
+            }
+        }
+    },
+    
+    onSetConfig: function() {
+        this.optionsManager.commit();
+    },
+    
+    onGotConfig: function(config) {
+        this.optionsManager.set(config);
+    },
+    
+    onPageShow: function() {
+        deluge.client.streaming.get_config({
+            success: this.onGotConfig,
+            scope: this
+        })
+    }
+});
+
 StreamingPlugin = Ext.extend(Deluge.Plugin, {
-	constructor: function(config) {
-		config = Ext.apply({
-			name: "Streaming"
-		}, config);
-		StreamingPlugin.superclass.constructor.call(this, config);
-	},
+    'name': 'Streaming',
 
 	onDisable: function() {
-
+        deluge.menus.filePriorities.remove('streamthis');
+        
+        deluge.preferences.selectPage(_('Plugins'));
+        deluge.preferences.removePage(this.prefsPage);
+        this.prefsPage.destroy();
 	},
 
-	onEnable: function() {
-
+    onEnable: function() {
+        this.prefsPage = new PreferencePage();
+        deluge.preferences.addPage(this.prefsPage);
+        
+        console.log('Streaming plugin loaded');
+        deluge.menus.filePriorities.addMenuItem({
+            id: 'streamthis',
+            text: 'Stream this file',
+            iconCls: 'icon-down',
+            handler: function (item, event) {
+                deluge.menus.filePriorities.hide();
+                var files = deluge.details.items.items[2];
+                var nodes = files.getSelectionModel().getSelectedNodes();
+                if (nodes) {
+                    var fileIndex = nodes[0].attributes.fileIndex;
+                    var tid = files.torrentId;
+                    if (fileIndex >= 0) {
+                        deluge.client.streaming.stream_torrent(tid, fileIndex, {
+                            success: function (result) {
+                                if (result.status == 'success') {
+                                    Ext.Msg.alert('Stream ready', 'URL for stream: <a target="_blank" href="' + result.url + '">' + result.url + '</a>');
+                                } else {
+                                    Ext.Msg.alert('Stream failed', 'Error message: ' + result.message);
+                                }
+                            }
+                        })
+                    }
+                }
+                return false;
+            }
+        });
 	}
 });
-new StreamingPlugin();
+Deluge.registerPlugin('Streaming', StreamingPlugin);
