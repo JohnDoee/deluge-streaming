@@ -68,6 +68,7 @@ class MultipleRangeStaticProducer(static.MultipleRangeStaticProducer):
         if done:
             self.request.unregisterProducer()
             self.request.finish()
+            self.stopProducing()
             self.request = None
 
 class FilelikeObjectResource(static.File):
@@ -141,6 +142,7 @@ class FilelikeObjectResource(static.File):
         producer = self.makeProducer(request, self.fileObject)
 
         if request.method == 'HEAD':
+            self.fileObject.close()
             return ''
 
         producer.start()
