@@ -225,6 +225,7 @@ class TorrentFile(object): # can be read from, knows about itself
             logger.debug('Got data for piece %i, but no data needed for this piece?' % alert.piece)
             return
         # TODO: check piece size is not zero
+        
         self.waiting_pieces[alert.piece].callback(alert.buffer)
     
     @defer.inlineCallbacks
@@ -293,8 +294,13 @@ class Torrent(object):
             first_piece = f['offset'] / piece_length
             last_piece = (f['offset'] + f['size']) / piece_length
             full_path = os.path.join(save_path, f['path'])
+            
+            path = f['path']
+            if '/' in path:
+                path = '/'.join(path.split('/')[1:])
+            
             self.torrent_files.append(TorrentFile(self, first_piece, last_piece, piece_length, f['offset'],
-                                                  f['path'], full_path, f['size'], f['index']))
+                                                  path, full_path, f['size'], f['index']))
         
         return files
     
@@ -303,6 +309,7 @@ class Torrent(object):
         biggest_file_size = 0
         
         for i, f in enumerate(self.torrent_files):
+            logger.debug('Testing file %r against %s / %r' % (file_or_index, i, f.path))
             if file_or_index is not None:
                 if i == file_or_index or f.path == file_or_index:
                     best_file = f
