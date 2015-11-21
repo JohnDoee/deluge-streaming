@@ -132,8 +132,8 @@ class GtkUI(GtkPluginBase):
         
         torrentmenu = component.get("MenuBar").torrentmenu
         
-        file_menu.remove(self.item_torrentmenu)
-        file_menu.remove(self.sep_torrentmenu)
+        torrentmenu.remove(self.item_torrentmenu)
+        torrentmenu.remove(self.sep_torrentmenu)
         
         self.site.stopFactory()
         yield self.listening.stopListening()
