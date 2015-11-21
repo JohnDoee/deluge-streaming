@@ -75,7 +75,11 @@ class LocalAddResource(resource.Resource):
         if torrent_file:
             torrent_file = torrent_file[0]
         
-        client.streaming.stream_torrent(url=torrent_url[0], filepath_or_index=torrent_file).addCallback(self.gtkui.stream_ready)
+        infohash = request.args.get('infohash', None)
+        if infohash:
+            infohash = infohash[0]
+        
+        client.streaming.stream_torrent(url=torrent_url[0], infohash=infohash, filepath_or_index=torrent_file).addCallback(self.gtkui.stream_ready)
         
         return json.dumps({'status': 'ok', 'message': 'queued'})
 
@@ -99,6 +103,18 @@ class GtkUI(GtkPluginBase):
         self.sep.show()
         self.item.show()
         
+        torrentmenu = component.get("MenuBar").torrentmenu
+        
+        self.sep_torrentmenu = gtk.SeparatorMenuItem()
+        self.item_torrentmenu = gtk.MenuItem(_("_Stream this torrent"))
+        self.item_torrentmenu.connect("activate", self.on_torrentmenu_menuitem_stream)
+        
+        torrentmenu.append(self.sep_torrentmenu)
+        torrentmenu.append(self.item_torrentmenu)
+
+        self.sep_torrentmenu.show()
+        self.item_torrentmenu.show()
+        
         self.resource = LocalAddResource(self)
         self.site = server.Site(self.resource)
         self.listening = reactor.listenTCP(40747, self.site, interface='127.0.0.1')
@@ -113,6 +129,11 @@ class GtkUI(GtkPluginBase):
 
         file_menu.remove(self.item)
         file_menu.remove(self.sep)
+        
+        torrentmenu = component.get("MenuBar").torrentmenu
+        
+        file_menu.remove(self.item_torrentmenu)
+        file_menu.remove(self.sep_torrentmenu)
         
         self.site.stopFactory()
         yield self.listening.stopListening()
@@ -173,3 +194,7 @@ class GtkUI(GtkPluginBase):
             path = ft.get_file_path(select)
             client.streaming.stream_torrent(infohash=torrent_id, filepath_or_index=path).addCallback(self.stream_ready)
             break
+    
+    def on_torrentmenu_menuitem_stream(self, data=None):
+        torrent_id = component.get("TorrentView").get_selected_torrents()[0]
+        client.streaming.stream_torrent(infohash=torrent_id).addCallback(self.stream_ready)

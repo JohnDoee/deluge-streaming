@@ -317,6 +317,7 @@ class Torrent(object):
             else:
                 if f.size > biggest_file_size:
                     best_file = f
+                    biggest_file_size = f.size
         
         return best_file
     
@@ -471,6 +472,10 @@ class Torrent(object):
                 elif tfr.current_piece is not None:
                     logger.debug('Scheduling based on current piece %s' % tfr.current_piece)
                     all_heads_done &= self.do_pieces_schedule(f, currently_downloading, tfr.current_piece)
+        
+        if all(self.torrent.status.pieces):
+            logger.debug('All pieces complete, no need to loop')
+            return
         
         if all_heads_done and not self.torrent_released:
             logger.debug('We are already done with all heads, figuring out what to do next')
