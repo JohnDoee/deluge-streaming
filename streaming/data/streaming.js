@@ -68,6 +68,18 @@ PreferencePage = Ext.extend(Ext.Panel, {
             fieldLabel: 'IP'
         }));
         
+        om.bind('use_stream_urls', fieldset.add({
+            xtype: 'checkbox',
+            name: 'use_stream_urls',
+            fieldLabel: 'Use StreamProtocol urls',
+        }));
+        
+        om.bind('auto_open_stream_urls', fieldset.add({
+            xtype: 'checkbox',
+            name: 'auto_open_stream_urls',
+            fieldLabel: 'AutoOpen StreamProtocol urls',
+        }));
+        
         om.bind('reset_complete', fieldset.add({
             xtype: 'checkbox',
             name: 'reset_complete',
@@ -138,6 +150,28 @@ StreamingPlugin = Ext.extend(Deluge.Plugin, {
         deluge.preferences.addPage(this.prefsPage);
         
         console.log('Streaming plugin loaded');
+        var doStream = function (tid, fileIndex) {
+            deluge.client.streaming.stream_torrent(tid, null, null, fileIndex, {
+                success: function (result) {
+                    console.log('Got result', result);
+                    if (result.status == 'success') {
+                        var url = result.url;
+                        if (result.use_stream_urls) {
+                            url = 'stream+' + url;
+                            if (result.auto_open_stream_urls) {
+                                window.location.assign(url);
+                                return;
+                            }
+                        }
+                        Ext.Msg.alert('Stream ready', 'URL for stream: <a target="_blank" href="' + url + '">' + url + '</a>');
+                    } else {
+                        Ext.Msg.alert('Stream failed', 'Error message: ' + result.message);
+                    }
+                }
+            })
+        }
+        
+        
         deluge.menus.filePriorities.addMenuItem({
             id: 'streamthis',
             text: 'Stream this file',
@@ -150,16 +184,22 @@ StreamingPlugin = Ext.extend(Deluge.Plugin, {
                     var fileIndex = nodes[0].attributes.fileIndex;
                     var tid = files.torrentId;
                     if (fileIndex >= 0) {
-                        deluge.client.streaming.stream_torrent(tid, fileIndex, {
-                            success: function (result) {
-                                if (result.status == 'success') {
-                                    Ext.Msg.alert('Stream ready', 'URL for stream: <a target="_blank" href="' + result.url + '">' + result.url + '</a>');
-                                } else {
-                                    Ext.Msg.alert('Stream failed', 'Error message: ' + result.message);
-                                }
-                            }
-                        })
+                        doStream(tid, fileIndex);
                     }
+                }
+                return false;
+            }
+        });
+        
+        deluge.menus.torrent.addMenuItem({
+            id: 'streamthistorrent',
+            text: 'Stream this torrent',
+            iconCls: 'icon-down',
+            handler: function (item, event) {
+                deluge.menus.torrent.hide();
+                var ids = deluge.torrents.getSelectedIds();
+                if (ids) {
+                    doStream(ids[0]);
                 }
                 return false;
             }

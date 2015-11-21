@@ -34,13 +34,35 @@
           </child>
           
           <child>
+            <widget class="GtkLabel" id="label_use_stream_urls">
+              <property name="visible">True</property>
+              <property name="xalign">0</property>
+              <property name="label" translatable="yes">Use stream urls:</property>
+            </widget>
+            <packing>
+              <property name="position">2</property>
+            </packing>
+          </child>
+          
+          <child>
+            <widget class="GtkLabel" id="label_auto_open_stream_urls">
+              <property name="visible">True</property>
+              <property name="xalign">0</property>
+              <property name="label" translatable="yes">Auto-open stream urls:</property>
+            </widget>
+            <packing>
+              <property name="position">3</property>
+            </packing>
+          </child>
+          
+          <child>
             <widget class="GtkLabel" id="label_reset_complete">
               <property name="visible">True</property>
               <property name="xalign">0</property>
               <property name="label" translatable="yes">Reset "do not download" when streamed file is complete:</property>
             </widget>
             <packing>
-              <property name="position">2</property>
+              <property name="position">4</property>
             </packing>
           </child>
           
@@ -51,7 +73,7 @@
               <property name="label" translatable="yes">Allow remote control:</property>
             </widget>
             <packing>
-              <property name="position">3</property>
+              <property name="position">5</property>
             </packing>
           </child>
           
@@ -62,7 +84,7 @@
               <property name="label" translatable="yes">Remote username:</property>
             </widget>
             <packing>
-              <property name="position">4</property>
+              <property name="position">6</property>
             </packing>
           </child>
           
@@ -73,7 +95,7 @@
               <property name="label" translatable="yes">Remote password:</property>
             </widget>
             <packing>
-              <property name="position">5</property>
+              <property name="position">7</property>
             </packing>
           </child>
           
@@ -108,7 +130,7 @@
           </child>
           
           <child>
-            <widget class="GtkCheckButton" id="input_reset_complete">
+            <widget class="GtkCheckButton" id="input_use_stream_urls">
               <property name="visible">True</property>
               <property name="can_focus">True</property>
             </widget>
@@ -118,7 +140,7 @@
           </child>
           
           <child>
-            <widget class="GtkCheckButton" id="input_allow_remote">
+            <widget class="GtkCheckButton" id="input_auto_open_stream_urls">
               <property name="visible">True</property>
               <property name="can_focus">True</property>
             </widget>
@@ -128,12 +150,32 @@
           </child>
           
           <child>
-            <widget class="GtkEntry" id="input_remote_username">
+            <widget class="GtkCheckButton" id="input_reset_complete">
               <property name="visible">True</property>
               <property name="can_focus">True</property>
             </widget>
             <packing>
               <property name="position">4</property>
+            </packing>
+          </child>
+          
+          <child>
+            <widget class="GtkCheckButton" id="input_allow_remote">
+              <property name="visible">True</property>
+              <property name="can_focus">True</property>
+            </widget>
+            <packing>
+              <property name="position">5</property>
+            </packing>
+          </child>
+          
+          <child>
+            <widget class="GtkEntry" id="input_remote_username">
+              <property name="visible">True</property>
+              <property name="can_focus">True</property>
+            </widget>
+            <packing>
+              <property name="position">6</property>
             </packing>
           </child>
           
@@ -144,13 +186,13 @@
               <property name="can_focus">True</property>
             </widget>
             <packing>
-              <property name="position">5</property>
+              <property name="position">7</property>
             </packing>
           </child>
           
           </widget>
           <packing>
-            <property name="position">1</property>
+            <property name="position">7</property>
           </packing>
         </child>
       </widget>

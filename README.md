@@ -41,6 +41,10 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 
 # Version Info
 
+## Version 0.5.0
+* Restructured the whole plugin
+* Added support for StreamProtocol
+
 ## Version 0.4.1
 * Fixed bug with old Deluge versions
 

@@ -12,7 +12,12 @@ class NoRangeStaticProducer(static.NoRangeStaticProducer):
     def resumeProducing(self):
         if not self.request:
             return
+        
         data = yield defer.maybeDeferred(self.fileObject.read, self.bufferSize)
+        
+        if not self.request:
+            return
+        
         if data:
             # this .write will spin the reactor, calling .doWrite and then
             # .resumeProducing again, so be prepared for a re-entrant call
@@ -27,13 +32,19 @@ class SingleRangeStaticProducer(static.SingleRangeStaticProducer):
     def resumeProducing(self):
         if not self.request:
             return
+        
         data = yield defer.maybeDeferred(self.fileObject.read,
             min(self.bufferSize, self.size - self.bytesWritten))
+        
+        if not self.request:
+            return
+        
         if data:
             self.bytesWritten += len(data)
             # this .write will spin the reactor, calling .doWrite and then
             # .resumeProducing again, so be prepared for a re-entrant call
             self.request.write(data)
+        
         if self.request and self.bytesWritten == self.size:
             self.request.unregisterProducer()
             self.request.finish()
@@ -44,6 +55,7 @@ class MultipleRangeStaticProducer(static.MultipleRangeStaticProducer):
     def resumeProducing(self):
         if not self.request:
             return
+        
         data = []
         dataLength = 0
         done = False
@@ -64,10 +76,16 @@ class MultipleRangeStaticProducer(static.MultipleRangeStaticProducer):
                 except StopIteration:
                     done = True
                     break
+        
+        if not self.request:
+            return
+        
         self.request.write(''.join(data))
+        
         if done:
             self.request.unregisterProducer()
             self.request.finish()
+            self.stopProducing()
             self.request = None
 
 class FilelikeObjectResource(static.File):
@@ -141,6 +159,7 @@ class FilelikeObjectResource(static.File):
         producer = self.makeProducer(request, self.fileObject)
 
         if request.method == 'HEAD':
+            self.fileObject.close()
             return ''
 
         producer.start()
