@@ -613,5 +613,5 @@ class Core(CorePluginBase):
             'use_stream_urls': self.config['use_stream_urls'],
             'auto_open_stream_urls': self.config['auto_open_stream_urls'],
             'url': 'http://%s:%s/file/%s/%s' % (self.config.config['ip'], self.config.config['port'],
-                                                self.fsr.add_file(tf), urllib.quote_plus(os.path.basename(tf.path)))
+                                                self.fsr.add_file(tf), urllib.quote_plus(os.path.basename(tf.path).encode('utf-8')))
         })
