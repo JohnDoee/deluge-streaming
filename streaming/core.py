@@ -553,7 +553,7 @@ class Core(CorePluginBase):
         try:
             self.listening = reactor.listenTCP(self.config['port'], self.site, interface=self.config['ip'])
         except:
-            self.listening = reactor.listenTCP(self.config['port'], self.site, interface='127.0.0.1')
+            self.listening = reactor.listenTCP(self.config['port'], self.site, interface='0.0.0.0')
 
     @defer.inlineCallbacks
     def disable(self):
