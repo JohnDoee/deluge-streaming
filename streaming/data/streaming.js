@@ -151,7 +151,7 @@ StreamingPlugin = Ext.extend(Deluge.Plugin, {
         
         console.log('Streaming plugin loaded');
         var doStream = function (tid, fileIndex) {
-            deluge.client.streaming.stream_torrent(tid, null, null, fileIndex, {
+            deluge.client.streaming.stream_torrent(tid, null, null, fileIndex, true, {
                 success: function (result) {
                     console.log('Got result', result);
                     if (result.status == 'success') {

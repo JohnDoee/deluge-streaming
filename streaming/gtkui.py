@@ -192,7 +192,7 @@ class GtkUI(GtkPluginBase):
         
         for select in selected:
             path = ft.get_file_path(select)
-            client.streaming.stream_torrent(infohash=torrent_id, filepath_or_index=path).addCallback(self.stream_ready)
+            client.streaming.stream_torrent(infohash=torrent_id, filepath_or_index=path, includes_name=True).addCallback(self.stream_ready)
             break
     
     def on_torrentmenu_menuitem_stream(self, data=None):

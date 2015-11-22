@@ -295,23 +295,23 @@ class Torrent(object):
             last_piece = (f['offset'] + f['size']) / piece_length
             full_path = os.path.join(save_path, f['path'])
             
-            path = f['path']
-            if '/' in path:
-                path = '/'.join(path.split('/')[1:])
-            
             self.torrent_files.append(TorrentFile(self, first_piece, last_piece, piece_length, f['offset'],
-                                                  path, full_path, f['size'], f['index']))
+                                                  f['path'], full_path, f['size'], f['index']))
         
         return files
     
-    def find_file(self, file_or_index=None):
+    def find_file(self, file_or_index=None, includes_name=False):
         best_file = None
         biggest_file_size = 0
         
         for i, f in enumerate(self.torrent_files):
-            logger.debug('Testing file %r against %s / %r' % (file_or_index, i, f.path))
+            path = f.path
+            if not includes_name and '/' in path:
+                path = '/'.join(path.split('/')[1:])
+            
+            logger.debug('Testing file %r against %s / %r' % (file_or_index, i, path))
             if file_or_index is not None:
-                if i == file_or_index or f.path == file_or_index:
+                if i == file_or_index or path == file_or_index:
                     best_file = f
                     break
             else:
@@ -321,8 +321,8 @@ class Torrent(object):
         
         return best_file
     
-    def get_file(self, file_or_index=None):
-        f = self.find_file(file_or_index)
+    def get_file(self, file_or_index=None, includes_name=False):
+        f = self.find_file(file_or_index, includes_name)
         if f is None:
             raise UnknownFileException('Was unable to find %s' % file_or_index)
         
@@ -365,8 +365,8 @@ class Torrent(object):
             self.torrent.set_file_priorities(self.file_priorities)
             self.blackhole_all_pieces(0, self.last_piece)
     
-    def get_torrent_file(self, file_or_index):
-        f = self.get_file(file_or_index)
+    def get_torrent_file(self, file_or_index, includes_name):
+        f = self.get_file(file_or_index, includes_name)
         f.file_requested = True
         
         self.torrent.resume()
@@ -500,12 +500,12 @@ class TorrentHandler(object):
         self.alerts = component.get("AlertManager")
         self.alerts.register_handler("torrent_removed_alert", self.on_alert_torrent_removed)
     
-    def get_stream(self, infohash, file_or_index=None):
-        logger.info('Trying to stream infohash %s and file %s' % (infohash, file_or_index))
+    def get_stream(self, infohash, file_or_index=None, includes_name=False):
+        logger.info('Trying to stream infohash %s and file %s include_name %s' % (infohash, file_or_index, includes_name))
         if infohash not in self.torrents:
             self.torrents[infohash] = Torrent(self, infohash)
         
-        return self.torrents[infohash].get_torrent_file(file_or_index)
+        return self.torrents[infohash].get_torrent_file(file_or_index, includes_name)
     
     def on_alert_torrent_removed(self, alert):
         try:
@@ -582,7 +582,7 @@ class Core(CorePluginBase):
     
     @export
     @defer.inlineCallbacks
-    def stream_torrent(self, infohash=None, url=None, filedump=None, filepath_or_index=None):
+    def stream_torrent(self, infohash=None, url=None, filedump=None, filepath_or_index=None, includes_name=False):
         tor = component.get("TorrentManager").torrents.get(infohash, None)
         
         if tor is None:
@@ -604,7 +604,7 @@ class Core(CorePluginBase):
                 defer.returnValue({'status': 'error', 'message': 'failed to add torrent'})
             
         try:
-            tf = self.torrent_handler.get_stream(infohash, filepath_or_index)
+            tf = self.torrent_handler.get_stream(infohash, filepath_or_index, includes_name)
         except UnknownTorrentException:
             defer.returnValue({'status': 'error', 'message': 'unable to find torrent, probably failed to add it'})
         
