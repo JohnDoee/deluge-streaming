@@ -256,7 +256,6 @@ class TorrentFile(object): # can be read from, knows about itself
         defer.returnValue(data)
     
     def shutdown(self):
-        #self.alerts.deregister_handler(self.on_alert_torrent_finished)
         self.do_shutdown = True
 
 class Torrent(object):
@@ -271,7 +270,7 @@ class Torrent(object):
         self.torrent_files = None
         self.priority_increased = defaultdict(set)
         self.do_shutdown = False
-        self.torrent_released = False # set to True if all the files are set to download
+        self.torrent_released = True # set to True if all the files are set to download
         
         
         self.populate_files()
