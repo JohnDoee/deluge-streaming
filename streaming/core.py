@@ -66,7 +66,7 @@ DEFAULT_PREFS = {
     'port': 46123,
     'allow_remote': False,
     'reset_complete': True,
-    'use_stream_urls': True,
+    'use_stream_urls': False,
     'auto_open_stream_urls': False,
     'remote_username': 'username',
     'remote_password': 'password',
@@ -206,6 +206,9 @@ class TorrentFile(object): # can be read from, knows about itself
     def close(self, tfr):
         self.current_readers.remove(tfr)
         self.torrent.unprioritize_pieces(tfr)
+        
+        if not self.current_readers:
+            self.torrent.unprioritize_pieces(self)
     
     def is_complete(self):
         torrent_status = self.torrent.torrent.get_status(['file_progress', 'state'])
@@ -239,7 +242,7 @@ class TorrentFile(object): # can be read from, knows about itself
             self.waiting_pieces[piece] = defer.Deferred()
         
         logger.debug('Waiting for %s' % piece)
-        self.torrent.schedule_piece(self, piece, 0)
+        self.torrent.schedule_piece(self, self, piece, 0)
         while not self.torrent.torrent.handle.have_piece(piece):
             if self.do_shutdown:
                 raise Exception()
@@ -280,6 +283,13 @@ class Torrent(object):
         self.torrent.handle.set_sequential_download(True)
         reactor.callLater(0, self.update_piece_priority)
         reactor.callLater(0, self.blackhole_all_pieces, 0, self.last_piece)
+    
+    def is_unstreamed(self): # check if anyone streams this file
+        for tf in self.torrent_files:
+            if tf.current_readers:
+                return True
+        
+        return False
     
     def populate_files(self):
         self.torrent_files = []
@@ -329,6 +339,11 @@ class Torrent(object):
     
     def unprioritize_pieces(self, tfr):
         logger.debug('Unprioritizing pieces for %s' % tfr)
+        
+        if self.torrent_handler.config['reset_complete'] and self.is_unstreamed():
+            logger.debug('Not unprioritizing pieces because there are no streams and it would stop the file (causes problems)')
+            return
+        
         currently_downloading = self.get_currently_downloading()
         
         for piece, increased_by in self.priority_increased.items():
@@ -354,7 +369,7 @@ class Torrent(object):
             if piece not in currently_downloading and not self.torrent.status.pieces[piece]:
                 if piece in self.priority_increased:
                     continue
-                logger.debug('Setting piece priority %s to blacklist' % piece)
+                #logger.debug('Setting piece priority %s to blacklist' % piece)
                 self.torrent.handle.piece_priority(piece, 0)
     
     def unrelease(self):
@@ -390,19 +405,16 @@ class Torrent(object):
         for tf in self.torrent_files:
             tf.shutdown()
     
-    def schedule_piece(self, torrent_file, piece, distance):
-        if torrent_file not in self.priority_increased[piece]:
+    def schedule_piece(self, torrent_file, schedule_target, piece, distance):
+        if schedule_target not in self.priority_increased[piece]:
             if not self.priority_increased[piece]:
-                self.priority_increased[piece].add(torrent_file)
-        
                 logger.debug('Scheduled piece %s at distance %s' % (piece, distance))
                 
                 self.torrent.handle.piece_priority(piece, (7 if distance <= 4 else 6))
                 self.torrent.handle.set_piece_deadline(piece, 700*(distance+1))
-            
-            self.priority_increased[piece].add(torrent_file)
+            self.priority_increased[piece].add(schedule_target)
     
-    def do_pieces_schedule(self, torrent_file, currently_downloading, from_piece):
+    def do_pieces_schedule(self, torrent_file, schedule_target, currently_downloading, from_piece):
         logger.debug('Looking for stuff to do with pieces for file %s from piece %s' % (torrent_file, from_piece))
         
         priority_increased = 0
@@ -433,7 +445,7 @@ class Torrent(object):
                     logger.debug('Done increasing priority for %i pieces' % status_increase)
                     break
                 
-                self.schedule_piece(torrent_file, piece, piece-from_piece)
+                self.schedule_piece(torrent_file, schedule_target, piece, piece-from_piece)
         else:
             logger.info('We are done with the rest of this chain, we might be able to increase others')
             return True
@@ -459,18 +471,18 @@ class Torrent(object):
             logger.debug('Rescheduling file %s' % f.path)
             
             if f.file_requested:
-                all_heads_done &= self.do_pieces_schedule(f, currently_downloading, f.first_piece)
-                self.schedule_piece(f, f.last_piece, 0)
+                all_heads_done &= self.do_pieces_schedule(f, f, currently_downloading, f.first_piece)
+                self.schedule_piece(f, f, f.last_piece, 0)
                 if f.first_piece != f.last_piece:
-                    self.schedule_piece(f, f.last_piece-1, 1)
+                    self.schedule_piece(f, f, f.last_piece-1, 1)
             
             for tfr in f.current_readers:
                 if tfr.waiting_for_piece is not None:
                     logger.debug('Scheduling based on waiting for piece %s' % tfr.waiting_for_piece)
-                    all_heads_done &= self.do_pieces_schedule(f, currently_downloading, tfr.waiting_for_piece)
+                    all_heads_done &= self.do_pieces_schedule(f, tfr, currently_downloading, tfr.waiting_for_piece)
                 elif tfr.current_piece is not None:
                     logger.debug('Scheduling based on current piece %s' % tfr.current_piece)
-                    all_heads_done &= self.do_pieces_schedule(f, currently_downloading, tfr.current_piece)
+                    all_heads_done &= self.do_pieces_schedule(f, tfr, currently_downloading, tfr.current_piece)
         
         if all(self.torrent.status.pieces):
             logger.debug('All pieces complete, no need to loop')
