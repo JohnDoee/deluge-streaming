@@ -132,8 +132,8 @@ class GtkUI(GtkPluginBase):
         
         torrentmenu = component.get("MenuBar").torrentmenu
         
-        file_menu.remove(self.item_torrentmenu)
-        file_menu.remove(self.sep_torrentmenu)
+        torrentmenu.remove(self.item_torrentmenu)
+        torrentmenu.remove(self.sep_torrentmenu)
         
         self.site.stopFactory()
         yield self.listening.stopListening()
@@ -192,7 +192,7 @@ class GtkUI(GtkPluginBase):
         
         for select in selected:
             path = ft.get_file_path(select)
-            client.streaming.stream_torrent(infohash=torrent_id, filepath_or_index=path).addCallback(self.stream_ready)
+            client.streaming.stream_torrent(infohash=torrent_id, filepath_or_index=path, includes_name=True).addCallback(self.stream_ready)
             break
     
     def on_torrentmenu_menuitem_stream(self, data=None):
