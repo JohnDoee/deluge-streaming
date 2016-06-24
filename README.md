@@ -41,6 +41,11 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 
 # Version Info
 
+## Version 0.6.0
+* Fixed URL encoding error
+* Fixed "resume on complete" broken-ness (i hope)
+* Changed default to not use stream urls
+
 ## Version 0.5.0
 * Restructured the whole plugin
 * Added support for StreamProtocol
