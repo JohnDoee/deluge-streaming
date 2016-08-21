@@ -42,7 +42,7 @@ from setuptools import setup
 __plugin_name__ = "Streaming"
 __author__ = "John Doee"
 __author_email__ = "johndoee@tidalstream.org"
-__version__ = "0.6.1"
+__version__ = "0.7.0"
 __url__ = "https://github.com/JohnDoee/deluge-streaming"
 __license__ = "GPLv3"
 __description__ = "Enables streaming of files while downloading them."
@@ -59,7 +59,6 @@ downloads ahead, this enables seeking in video files.
 * Select _files_ tab
 * Right-click a file.
 * Click _Stream this file_
-* **WAIT**, it will try to buffer the first pieces of the file before generating a link (no feedback yet).
 * Select the link, open it in a media player, e.g. VLC or MPC
 
 If you want to stream from a non-local computer, e.g. your seedbox, you will need to change the IP in option to the external server ip."""

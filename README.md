@@ -1,7 +1,7 @@
 # Streaming Plugin
 https://github.com/JohnDoee/deluge-streaming
 
-(c)2015 by Anders Jensen <johndoee@tidalstream.org>
+(c)2016 by Anders Jensen <johndoee@tidalstream.org>
 
 ## Description
 
@@ -35,11 +35,15 @@ make Deluge an abstraction layer for the [TidalStream](http://www.tidalstream.or
 
 The _allow remote_ option is to allow remote add and stream of torrents.
 
-## ToDo
+# Known bugs
 
-* Add feedback when preparing stream.
+* Sometimes the plugin tries to read empty data when there is too much requesting going on.
 
 # Version Info
+
+## Version 0.7.0
+* Shrinked code by redoing queue algorithm. This should prevent more stalled downloads and allow it to act bittorrenty if necessary.
+* Added support for waiting for end pieces to satisfy some video players (KODI)
 
 ## Version 0.6.1
 * Should not have been in changelog: Fixed "resume on complete" broken-ness (i hope)
