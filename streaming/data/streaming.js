@@ -35,6 +35,8 @@ PreferencePage = Ext.extend(Ext.Panel, {
     title: 'Streaming',
     border: false,
     layout: 'form',
+    autoScroll: true,
+    _fields: {},
     
     initComponent: function() {
         PreferencePage.superclass.initComponent.call(this);
@@ -45,7 +47,26 @@ PreferencePage = Ext.extend(Ext.Panel, {
         var fieldset = this.add({
             xtype: 'fieldset',
             border: false,
-            title: 'Streaming',
+            title: 'Settings',
+            style: 'margin-bottom: 0px; padding-bottom: 0px; padding-top: 5px',
+            autoHeight: true,
+            labelWidth: 1,
+            defaultType: 'textfield',
+            defaults: {
+                width: 180,
+            }
+        });
+        
+        om.bind('download_only_streamed', fieldset.add({
+            xtype: 'checkbox',
+            name: 'download_only_streamed',
+            boxLabel: 'Download only streamed files, skip the other files',
+        }));
+        
+        fieldset = this.add({
+            xtype: 'fieldset',
+            border: false,
+            title: 'File Serving Settings',
             style: 'margin-bottom: 0px; padding-bottom: 0px; padding-top: 5px',
             autoHeight: true,
             labelWidth: 110,
@@ -55,71 +76,210 @@ PreferencePage = Ext.extend(Ext.Panel, {
             }
         });
         
+        om.bind('ip', fieldset.add({
+            name: 'ip',
+            fieldLabel: 'Hostname',
+        }));
+        
         om.bind('port', fieldset.add({
             name: 'port',
             fieldLabel: _('Port'),
             decimalPrecision: 0,
             minValue: -1,
-            maxValue: 99999
+            maxValue: 99999,
         }));
         
-        om.bind('ip', fieldset.add({
-            name: 'ip',
-            fieldLabel: 'IP'
+        fieldset = this.add({
+			xtype: 'fieldset',
+			border: false,
+			autoHeight: true,
+			defaultType: 'radio',
+			style: 'margin-bottom: 5px; margin-top: 0; padding-bottom: 5px; padding-top: 0;',
+			width: 240,
+            labelWidth: 1
+		});
+        
+        this._fields['serve_method_webui'] = fieldset.add({
+            name: 'serve_method',
+            boxLabel: 'Serve files via WebUI',
+            inputValue: 'webui',
+            disabled: true
+        });
+        
+        om.bind('serve_method', this._fields['serve_method_webui']);
+        
+        this._fields['serve_method_standalone'] = fieldset.add({
+            name: 'serve_method',
+            boxLabel: 'Serve files via standalone',
+            inputValue: 'standalone',
+            disabled: true
+        });
+        om.bind('serve_method', this._fields['serve_method_standalone']);
+        
+        
+        om.bind('use_ssl', fieldset.add({
+            xtype: 'checkbox',
+            name: 'use_ssl',
+            boxLabel: 'Use SSL',
+            style: 'margin-left: 12px;'
         }));
+        
+        fieldset = this.add({
+			xtype: 'fieldset',
+			border: false,
+			autoHeight: true,
+			defaultType: 'radio',
+			style: 'margin-left: 24px; margin-bottom: 5px; margin-top: 0; padding-bottom: 5px; padding-top: 0;',
+			width: 240,
+            labelWidth: 1
+		});
+		
+        this._fields['ssl_source_daemon'] = fieldset.add({
+            name: 'ssl_source',
+            boxLabel: 'Use Daemon/WebUI Certificate',
+            inputValue: 'daemon',
+            value: 'daemon'
+        })
+        om.bind('ssl_source', this._fields['ssl_source_daemon']);
+        
+        this._fields['ssl_source_custom'] = fieldset.add({
+            name: 'ssl_source',
+            boxLabel: 'Custom Certificate',
+            inputValue: 'custom',
+            value: 'custom'
+        });
+        om.bind('ssl_source', this._fields['ssl_source_custom']);
+        
+        fieldset = this.add({
+            xtype: 'fieldset',
+            border: false,
+            style: 'margin-left: 24px; margin-bottom: 0px; padding-bottom: 0px; padding-top: 5px',
+            autoHeight: true,
+            labelWidth: 110,
+            defaultType: 'textfield',
+            defaults: {
+                width: 130,
+            }
+        });
+        
+        om.bind('ssl_priv_key_path', fieldset.add({
+            name: 'ssl_priv_key_path',
+            fieldLabel: 'Private key file path'
+        }));
+        
+        om.bind('ssl_cert_path', fieldset.add({
+            name: 'ssl_cert_path',
+            fieldLabel: 'Certificate and chains file path'
+        }));
+        
+        fieldset = this.add({
+            xtype: 'fieldset',
+            border: false,
+            title: 'Advanced settings',
+            style: 'margin-bottom: 0px; padding-bottom: 0px; padding-top: 5px',
+            autoHeight: true,
+            labelWidth: 1,
+            defaultType: 'textfield',
+            defaults: {
+                width: 180,
+            }
+        });
+        
+        om.bind('allow_remote', fieldset.add({
+            xtype: 'checkbox',
+            name: 'allow_remote',
+            boxLabel: 'Allow remote control',
+            style: 'margin-left: 12px;'
+        }));
+        
+        fieldset = this.add({
+            xtype: 'fieldset',
+            border: false,
+            style: 'margin-bottom: 0px; padding-bottom: 0px; padding-top: 5px',
+            autoHeight: true,
+            labelWidth: 110,
+            defaultType: 'textfield',
+            defaults: {
+                width: 180,
+            }
+        });
+        
+        om.bind('remote_username', fieldset.add({
+            xtype: 'textfield',
+            name: 'remote_username',
+            fieldLabel: 'Remote control username'
+        }));
+        
+        om.bind('remote_password', fieldset.add({
+            xtype: 'textfield',
+            name: 'remote_password',
+            fieldLabel: 'Remote control password'
+        }));
+        
+        fieldset = this.add({
+            xtype: 'fieldset',
+            border: false,
+            style: 'margin-bottom: 0px; padding-bottom: 0px; padding-top: 5px',
+            autoHeight: true,
+            labelWidth: 1,
+            defaultType: 'textfield',
+            defaults: {
+                width: 180,
+            }
+        });
         
         om.bind('use_stream_urls', fieldset.add({
             xtype: 'checkbox',
             name: 'use_stream_urls',
-            fieldLabel: 'Use StreamProtocol urls',
+            boxLabel: 'Use stream urls',
+            style: 'margin-left: 12px;'
         }));
         
         om.bind('auto_open_stream_urls', fieldset.add({
             xtype: 'checkbox',
             name: 'auto_open_stream_urls',
-            fieldLabel: 'AutoOpen StreamProtocol urls',
-        }));
-        
-        om.bind('reset_complete', fieldset.add({
-            xtype: 'checkbox',
-            name: 'reset_complete',
-            fieldLabel: 'Reset "do not download" when streamed file is complete',
-        }));
-        
-        om.bind('allow_remote', fieldset.add({
-            xtype: 'checkbox',
-            name: 'allow_remote',
-            fieldLabel: 'Allow remote control checkbox',
-        }));
-        
-        om.bind('remote_username', fieldset.add({
-            name: 'remote_username',
-            fieldLabel: 'Remote username'
-        }));
-        
-        om.bind('remote_password', fieldset.add({
-            name: 'remote_password',
-            inputType: 'password',
-            fieldLabel: 'Remote password'
+            boxLabel: 'Auto-open stream urls',
+            style: 'margin-left: 12px;'
         }));
     },
 
     onApply: function() {
+        
         var changed = this.optionsManager.getDirty();
+        for (var key in this._fields) {
+            if (this._fields.hasOwnProperty(key)) {
+                var v = this._fields[key];
+                if (v.checked) {
+                    changed[v.name] = v.inputValue;
+                }
+            }
+        }
         if (!Ext.isObjectEmpty(changed)) {
             deluge.client.streaming.set_config(changed, {
                 success: this.onSetConfig,
                 scope: this
             });
-    
+        
             for (var key in deluge.config) {
                 deluge.config[key] = this.optionsManager.get(key);
             }
         }
     },
     
-    onSetConfig: function() {
+    onSetConfig: function(result) {
         this.optionsManager.commit();
+        if (result) {
+            var message_type = result[0];
+            var message_class = result[1];
+            var message = result[2];
+            if (message_type == 'error') {
+                var topic = 'Unknown error type'
+                if (message_class == 'ssl') {
+                    topic = 'SSL Failed'
+                }
+                Ext.Msg.alert(topic, message);
+            }
+        }
     },
     
     onGotConfig: function(config) {

@@ -46,10 +46,11 @@ import urllib
 import deluge.configmanager
 
 from collections import defaultdict
+from copy import copy
 
-from deluge import component
+from deluge import component, configmanager
 from deluge._libtorrent import lt
-from deluge.core.rpcserver import export
+from deluge.core.rpcserver import export, check_ssl_keys
 from deluge.plugins.pluginbase import CorePluginBase
 
 from twisted.internet import reactor, defer, task
@@ -65,14 +66,17 @@ DEFAULT_PREFS = {
     'ip': '127.0.0.1',
     'port': 46123,
     'allow_remote': False,
-    'reset_complete': True,
+    'download_only_streamed': False,
     'use_stream_urls': False,
     'auto_open_stream_urls': False,
+    'use_ssl': False,
     'remote_username': 'username',
     'remote_password': 'password',
+    'serve_method': 'standalone',
+    'ssl_source': 'daemon',
+    'ssl_priv_key_path': '',
+    'ssl_cert_path': '',
 }
-
-# TODO: set priority for all torrents we're streaming using set_priority
 
 PRIORITY_INCREASE = 5
 
@@ -80,6 +84,24 @@ def sleep(seconds):
     d = defer.Deferred()
     reactor.callLater(seconds, d.callback, seconds)
     return d
+
+class ServerContextFactory(object):
+    def __init__(self, cert_file, key_file):
+        self._cert_file = cert_file
+        self._key_file = key_file
+    
+    def getContext(self):
+        from OpenSSL import SSL
+        
+        method = getattr(SSL, 'TLSv1_1_METHOD', None)
+        if method is None:
+            method = getattr(SSL, 'SSLv23_METHOD', None)
+        
+        ctx = SSL.Context(method)
+        ctx.use_certificate_file(self._cert_file)
+        ctx.use_certificate_chain_file(self._cert_file)
+        ctx.use_privatekey_file(self._key_file)
+        return ctx
 
 class FileServeResource(resource.Resource):
     isLeaf = True
@@ -98,7 +120,7 @@ class FileServeResource(resource.Resource):
         return token
     
     def render_GET(self, request):
-        key = request.path.split('/')[2]
+        key = request.postpath[0]
         if key not in self.file_mapping:
             return resource.NoResource().render(request)
         
@@ -233,7 +255,8 @@ class TorrentFile(object): # can be read from, knows about itself
         if alert.buffer is None:
             return
         
-        self.waiting_pieces[alert.piece].callback(alert.buffer)
+        piece_data = copy(alert.buffer)
+        self.waiting_pieces[alert.piece].callback(piece_data)
     
     @defer.inlineCallbacks
     def wait_for_end_pieces(self):
@@ -386,7 +409,7 @@ class Torrent(object):
             if priority == 0:
                 self.torrent.handle.piece_priority(piece, 1)
         
-        if self.torrent_handler.config['reset_complete']:
+        if not self.torrent_handler.config['download_only_streamed']:
             logger.debug('Resetting file priorities')
             file_priorities = [(1 if fp == 0 else fp) for fp in self.file_priorities]
             self.torrent.set_file_priorities(file_priorities)
@@ -526,18 +549,11 @@ class TorrentHandler(object):
             torrent.shutdown()
 
 class Core(CorePluginBase):
+    listening = None
+    base_url = None
+    
     def enable(self):
         self.config = deluge.configmanager.ConfigManager("streaming.conf", DEFAULT_PREFS)
-        self.fsr = FileServeResource()
-        
-        self.resource = Resource()
-        self.resource.putChild('file', self.fsr)
-        if self.config['allow_remote']:
-            self.resource.putChild('stream', StreamResource(username=self.config['remote_username'],
-                                                            password=self.config['remote_password'],
-                                                            client=self))
-        
-        self.site = server.Site(self.resource)
         
         try:
             session = component.get("Core").session
@@ -547,32 +563,122 @@ class Core(CorePluginBase):
         except AttributeError:
             logger.warning('Unable to exclude partial pieces')
         
+        self.fsr = FileServeResource()
+        resource = Resource()
+        resource.putChild('file', self.fsr)
+        if self.config['allow_remote']:
+            resource.putChild('stream', StreamResource(username=self.config['remote_username'],
+                                                       password=self.config['remote_password'],
+                                                       client=self))
+        
+        base_resource = Resource()
+        base_resource.putChild('streaming', resource)
+        self.site = server.Site(base_resource)
+        
         self.torrent_handler = TorrentHandler(self.config)
         
-        try:
-            self.listening = reactor.listenTCP(self.config['port'], self.site, interface=self.config['ip'])
-        except:
-            self.listening = reactor.listenTCP(self.config['port'], self.site, interface='0.0.0.0')
+        plugin_manager = component.get("CorePluginManager")
+        logger.warning('plugins %s' % (plugin_manager.get_enabled_plugins(), ))
+        
+        self.base_url = 'http'
+        if self.config['serve_method'] == 'standalone':
+            if self.config['use_ssl'] and self.check_ssl(): # use default deluge (or webui), input custom
+                if self.config['ssl_source'] == 'daemon':
+                    web_config = configmanager.ConfigManager("web.conf", {"pkey": "ssl/daemon.pkey",
+                                                                          "cert": "ssl/daemon.cert"})
+                    
+                    context = ServerContextFactory(configmanager.get_config_dir(web_config['cert']),
+                                                   configmanager.get_config_dir(web_config['pkey']))
+                elif self.config['ssl_source'] == 'custom':
+                    context = ServerContextFactory(self.config['ssl_cert_path'],
+                                                   self.config['ssl_priv_key_path'])
+                
+                try:
+                    self.listening = reactor.listenSSL(self.config['port'], self.site, context, interface=self.config['ip'])
+                except:
+                    self.listening = reactor.listenSSL(self.config['port'], self.site, context, interface='0.0.0.0')
+                self.base_url += 's'
+            else:
+                try:
+                    self.listening = reactor.listenTCP(self.config['port'], self.site, interface=self.config['ip'])
+                except:
+                    self.listening = reactor.listenTCP(self.config['port'], self.site, interface='0.0.0.0')
+            
+            port = self.config['port']
+            ip = self.config['ip']
+        elif self.config['serve_method'] == 'webui': # this webserver is fubar
+            plugin_manager = component.get("CorePluginManager")
+            
+            webui_plugin = plugin_manager['WebUi'].plugin
+            webui_plugin.server.top_level.putChild('streaming', resource)
+            
+            port = webui_plugin.server.port
+            ip = getattr(webui_plugin.server, 'interface', None) or self.config['ip']
+            if webui_plugin.server.https:
+                self.base_url += 's'
+        else:
+            raise NotImplementedError()
+        
+        self.base_url += '://'
+        if ':' in ip:
+            self.base_url += ip
+        else:
+            self.base_url += '%s:%s' % (ip, port)
 
     @defer.inlineCallbacks
     def disable(self):
         self.site.stopFactory()
         self.torrent_handler.shutdown()
-        yield self.listening.stopListening()
+        
+        plugin_manager = component.get("CorePluginManager")
+        webui_plugin = plugin_manager['WebUi'].plugin
+        
+        try:
+            webui_plugin.server.top_level.delEntity('streaming')
+        except KeyError:
+            pass
+        
+        if self.listening:
+            yield self.listening.stopListening()
+        self.listening = None
 
     def update(self):
         pass
 
+    def check_ssl(self):
+        if self.config['ssl_source'] == 'daemon':
+            return True
+        
+        if not os.path.isfile(self.config['ssl_priv_key_path']) or not os.access(self.config['ssl_priv_key_path'], os.R_OK):
+            return False
+        
+        if not os.path.isfile(self.config['ssl_cert_path']) or not os.access(self.config['ssl_cert_path'], os.R_OK):
+            return False
+        
+        return True
+    
+    def check_webui(self):
+        plugin_manager = component.get("CorePluginManager")
+        return 'WebUi' in plugin_manager.get_enabled_plugins()
+    
+    def check_config(self):
+        pass
+    
     @export
     @defer.inlineCallbacks
     def set_config(self, config):
-        """Sets the config dictionary"""
+        self.previous_config = copy(self.config)
+        
         for key in config.keys():
             self.config[key] = config[key]
         self.config.save()
         
         yield self.disable()
         self.enable()
+        
+        if self.config['serve_method'] == 'standalone' and self.config['ssl_source'] == 'custom' and self.config['use_ssl']:
+            if not self.check_ssl():
+                defer.returnValue(('error', 'ssl', 'SSL not enabled, make sure the private key and certificate exist and are accessible'))
 
     @export
     def get_config(self):
@@ -615,6 +721,6 @@ class Core(CorePluginBase):
             'status': 'success',
             'use_stream_urls': self.config['use_stream_urls'],
             'auto_open_stream_urls': self.config['auto_open_stream_urls'],
-            'url': 'http://%s:%s/file/%s/%s' % (self.config.config['ip'], self.config.config['port'],
-                                                self.fsr.add_file(tf), urllib.quote_plus(os.path.basename(tf.path).encode('utf-8')))
+            'url': '%s/streaming/file/%s/%s' % (self.base_url, self.fsr.add_file(tf),
+                                                urllib.quote_plus(os.path.basename(tf.path).encode('utf-8')))
         })

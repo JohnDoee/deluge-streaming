@@ -23,7 +23,6 @@ Under that tab, eggs for Python 2.6 and 2.7 should exist.
 * Select _files_ tab
 * Right-click a file.
 * Click _Stream this file_
-* **WAIT**, it will try to buffer the first pieces of the file before generating a link (no feedback yet).
 * Select the link, open it in a media player, e.g. VLC or MPC
 
 If you want to stream from a non-local computer, e.g. your seedbox, you will need to change the IP in option to the external server ip.
@@ -35,11 +34,11 @@ make Deluge an abstraction layer for the [TidalStream](http://www.tidalstream.or
 
 The _allow remote_ option is to allow remote add and stream of torrents.
 
-# Known bugs
-
-* Sometimes the plugin tries to read empty data when there is too much requesting going on.
-
 # Version Info
+
+## Version 0.7.1
+* Trying to fix bug where piece buffer went empty
+* Added support for SSL.
 
 ## Version 0.7.0
 * Shrinked code by redoing queue algorithm. This should prevent more stalled downloads and allow it to act bittorrenty if necessary.

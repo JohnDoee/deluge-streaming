@@ -138,20 +138,46 @@ class GtkUI(GtkPluginBase):
         self.site.stopFactory()
         yield self.listening.stopListening()
 
+    @defer.inlineCallbacks
     def on_apply_prefs(self):
         log.debug("applying prefs for Streaming")
+        
+        if self.glade.get_widget("input_serve_standalone").get_active():
+            serve_method = 'standalone'
+        elif self.glade.get_widget("input_serve_webui").get_active():
+            serve_method = 'webui'
+        
+        if self.glade.get_widget("input_ssl_cert_daemon").get_active():
+            ssl_source = 'daemon'
+        elif self.glade.get_widget("input_ssl_cert_custom").get_active():
+            ssl_source = 'custom'
+        
         config = {
             "ip": self.glade.get_widget("input_ip").get_text(),
             "port": int(self.glade.get_widget("input_port").get_text()),
             "use_stream_urls": self.glade.get_widget("input_use_stream_urls").get_active(),
             "auto_open_stream_urls": self.glade.get_widget("input_auto_open_stream_urls").get_active(),
             "allow_remote": self.glade.get_widget("input_allow_remote").get_active(),
-            "reset_complete": self.glade.get_widget("input_reset_complete").get_active(),
+            "download_only_streamed": self.glade.get_widget("input_download_only_streamed").get_active(),
+            "use_ssl": self.glade.get_widget("input_use_ssl").get_active(),
             "remote_username": self.glade.get_widget("input_remote_username").get_text(),
             "remote_password": self.glade.get_widget("input_remote_password").get_text(),
+            "ssl_priv_key_path": self.glade.get_widget("input_ssl_priv_key_path").get_text(),
+            "ssl_cert_path": self.glade.get_widget("input_ssl_cert_path").get_text(),
+            "serve_method": serve_method,
+            "ssl_source": ssl_source,
         }
         
-        client.streaming.set_config(config)
+        result = yield client.streaming.set_config(config)
+        
+        if result:
+            message_type, message_class, message = result
+            if message_type == 'error':
+                topic = 'Unknown error type'
+                if message_class == 'ssl':
+                    topic = 'SSL Failed'
+                
+                dialogs.ErrorDialog(topic, message).run()
 
     def on_show_prefs(self):
         client.streaming.get_config().addCallback(self.cb_get_config)
@@ -163,9 +189,18 @@ class GtkUI(GtkPluginBase):
         self.glade.get_widget("input_use_stream_urls").set_active(config["use_stream_urls"])
         self.glade.get_widget("input_auto_open_stream_urls").set_active(config["auto_open_stream_urls"])
         self.glade.get_widget("input_allow_remote").set_active(config["allow_remote"])
-        self.glade.get_widget("input_reset_complete").set_active(config["reset_complete"])
+        self.glade.get_widget("input_use_ssl").set_active(config["use_ssl"])
+        self.glade.get_widget("input_download_only_streamed").set_active(config["download_only_streamed"])
         self.glade.get_widget("input_remote_username").set_text(config["remote_username"])
         self.glade.get_widget("input_remote_password").set_text(config["remote_password"])
+        self.glade.get_widget("input_ssl_priv_key_path").set_text(config["ssl_priv_key_path"])
+        self.glade.get_widget("input_ssl_cert_path").set_text(config["ssl_cert_path"])
+        
+        self.glade.get_widget("input_serve_standalone").set_active(config["serve_method"] == "standalone")
+        self.glade.get_widget("input_serve_webui").set_active(config["serve_method"] == "webui")
+        
+        self.glade.get_widget("input_ssl_cert_daemon").set_active(config["ssl_source"] == "daemon")
+        self.glade.get_widget("input_ssl_cert_custom").set_active(config["ssl_source"] == "custom")
 
     def stream_ready(self, result):
         if result['status'] == 'success':
