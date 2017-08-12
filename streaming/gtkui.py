@@ -56,31 +56,31 @@ from common import get_resource
 class LocalAddResource(resource.Resource):
     gtkui = None
     isLeaf = True
-    
+
     def __init__(self, gtkui):
         self.gtkui = gtkui
         resource.Resource.__init__(self)
-    
+
     def render_GET(self, request):
         useragent = request.getHeader('User-Agent')
         if 'Deluge-Streamer' not in useragent:
             request.setResponseCode(401)
             return 'Unauthorized'
-        
+
         torrent_url = request.args.get('url', None)
         if not torrent_url:
             return json.dumps({'status': 'error', 'message': 'missing url in request'})
-        
+
         torrent_file = request.args.get('file', None)
         if torrent_file:
             torrent_file = torrent_file[0]
-        
+
         infohash = request.args.get('infohash', None)
         if infohash:
             infohash = infohash[0]
-        
+
         client.streaming.stream_torrent(url=torrent_url[0], infohash=infohash, filepath_or_index=torrent_file).addCallback(self.gtkui.stream_ready)
-        
+
         return json.dumps({'status': 'ok', 'message': 'queued'})
 
 class GtkUI(GtkPluginBase):
@@ -90,31 +90,31 @@ class GtkUI(GtkPluginBase):
         component.get("Preferences").add_page("Streaming", self.glade.get_widget("prefs_box"))
         component.get("PluginManager").register_hook("on_apply_prefs", self.on_apply_prefs)
         component.get("PluginManager").register_hook("on_show_prefs", self.on_show_prefs)
-        
+
         file_menu = component.get("MainWindow").main_glade.get_widget('menu_file_tab')
-        
+
         self.sep = gtk.SeparatorMenuItem()
         self.item = gtk.MenuItem(_("_Stream this file"))
         self.item.connect("activate", self.on_menuitem_stream)
-        
+
         file_menu.append(self.sep)
         file_menu.append(self.item)
 
         self.sep.show()
         self.item.show()
-        
+
         torrentmenu = component.get("MenuBar").torrentmenu
-        
+
         self.sep_torrentmenu = gtk.SeparatorMenuItem()
         self.item_torrentmenu = gtk.MenuItem(_("_Stream this torrent"))
         self.item_torrentmenu.connect("activate", self.on_torrentmenu_menuitem_stream)
-        
+
         torrentmenu.append(self.sep_torrentmenu)
         torrentmenu.append(self.item_torrentmenu)
 
         self.sep_torrentmenu.show()
         self.item_torrentmenu.show()
-        
+
         self.resource = LocalAddResource(self)
         self.site = server.Site(self.resource)
         self.listening = reactor.listenTCP(40747, self.site, interface='127.0.0.1')
@@ -124,34 +124,34 @@ class GtkUI(GtkPluginBase):
         component.get("Preferences").remove_page("Streaming")
         component.get("PluginManager").deregister_hook("on_apply_prefs", self.on_apply_prefs)
         component.get("PluginManager").deregister_hook("on_show_prefs", self.on_show_prefs)
-        
+
         file_menu = component.get("MainWindow").main_glade.get_widget('menu_file_tab')
 
         file_menu.remove(self.item)
         file_menu.remove(self.sep)
-        
+
         torrentmenu = component.get("MenuBar").torrentmenu
-        
+
         torrentmenu.remove(self.item_torrentmenu)
         torrentmenu.remove(self.sep_torrentmenu)
-        
+
         self.site.stopFactory()
         yield self.listening.stopListening()
 
     @defer.inlineCallbacks
     def on_apply_prefs(self):
         log.debug("applying prefs for Streaming")
-        
+
         if self.glade.get_widget("input_serve_standalone").get_active():
             serve_method = 'standalone'
         elif self.glade.get_widget("input_serve_webui").get_active():
             serve_method = 'webui'
-        
+
         if self.glade.get_widget("input_ssl_cert_daemon").get_active():
             ssl_source = 'daemon'
         elif self.glade.get_widget("input_ssl_cert_custom").get_active():
             ssl_source = 'custom'
-        
+
         config = {
             "ip": self.glade.get_widget("input_ip").get_text(),
             "port": int(self.glade.get_widget("input_port").get_text()),
@@ -167,16 +167,16 @@ class GtkUI(GtkPluginBase):
             "serve_method": serve_method,
             "ssl_source": ssl_source,
         }
-        
+
         result = yield client.streaming.set_config(config)
-        
+
         if result:
             message_type, message_class, message = result
             if message_type == 'error':
                 topic = 'Unknown error type'
                 if message_class == 'ssl':
                     topic = 'SSL Failed'
-                
+
                 dialogs.ErrorDialog(topic, message).run()
 
     def on_show_prefs(self):
@@ -195,12 +195,15 @@ class GtkUI(GtkPluginBase):
         self.glade.get_widget("input_remote_password").set_text(config["remote_password"])
         self.glade.get_widget("input_ssl_priv_key_path").set_text(config["ssl_priv_key_path"])
         self.glade.get_widget("input_ssl_cert_path").set_text(config["ssl_cert_path"])
-        
+
         self.glade.get_widget("input_serve_standalone").set_active(config["serve_method"] == "standalone")
         self.glade.get_widget("input_serve_webui").set_active(config["serve_method"] == "webui")
-        
+
         self.glade.get_widget("input_ssl_cert_daemon").set_active(config["ssl_source"] == "daemon")
         self.glade.get_widget("input_ssl_cert_custom").set_active(config["ssl_source"] == "custom")
+
+        api_url = 'http%s://%s:%s/streaming/stream' % (('s' if config["use_ssl"] else ''), config["ip"], config["port"])
+        self.glade.get_widget("output_remote_url").set_text(api_url)
 
     def stream_ready(self, result):
         if result['status'] == 'success':
@@ -217,19 +220,19 @@ class GtkUI(GtkPluginBase):
 
     def on_menuitem_stream(self, data=None):
         torrent_id = component.get("TorrentView").get_selected_torrents()[0]
-        
+
         ft = component.get("TorrentDetails").tabs['Files']
         paths = ft.listview.get_selection().get_selected_rows()[1]
-        
+
         selected = []
         for path in paths:
             selected.append(ft.treestore.get_iter(path))
-        
+
         for select in selected:
             path = ft.get_file_path(select)
             client.streaming.stream_torrent(infohash=torrent_id, filepath_or_index=path, includes_name=True).addCallback(self.stream_ready)
             break
-    
+
     def on_torrentmenu_menuitem_stream(self, data=None):
         torrent_id = component.get("TorrentView").get_selected_torrents()[0]
         client.streaming.stream_torrent(infohash=torrent_id).addCallback(self.stream_ready)

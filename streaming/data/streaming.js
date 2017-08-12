@@ -37,13 +37,13 @@ PreferencePage = Ext.extend(Ext.Panel, {
     layout: 'form',
     autoScroll: true,
     _fields: {},
-    
+
     initComponent: function() {
         PreferencePage.superclass.initComponent.call(this);
-        
+
         var om = this.optionsManager = new Deluge.OptionsManager();
         this.on('show', this.onPageShow, this);
-        
+
         var fieldset = this.add({
             xtype: 'fieldset',
             border: false,
@@ -56,13 +56,13 @@ PreferencePage = Ext.extend(Ext.Panel, {
                 width: 180,
             }
         });
-        
+
         om.bind('download_only_streamed', fieldset.add({
             xtype: 'checkbox',
             name: 'download_only_streamed',
             boxLabel: 'Download only streamed files, skip the other files',
         }));
-        
+
         fieldset = this.add({
             xtype: 'fieldset',
             border: false,
@@ -75,12 +75,12 @@ PreferencePage = Ext.extend(Ext.Panel, {
                 width: 180,
             }
         });
-        
+
         om.bind('ip', fieldset.add({
             name: 'ip',
             fieldLabel: 'Hostname',
         }));
-        
+
         om.bind('port', fieldset.add({
             name: 'port',
             fieldLabel: _('Port'),
@@ -88,7 +88,7 @@ PreferencePage = Ext.extend(Ext.Panel, {
             minValue: -1,
             maxValue: 99999,
         }));
-        
+
         fieldset = this.add({
 			xtype: 'fieldset',
 			border: false,
@@ -98,16 +98,16 @@ PreferencePage = Ext.extend(Ext.Panel, {
 			width: 240,
             labelWidth: 1
 		});
-        
+
         this._fields['serve_method_webui'] = fieldset.add({
             name: 'serve_method',
             boxLabel: 'Serve files via WebUI',
             inputValue: 'webui',
             disabled: true
         });
-        
+
         om.bind('serve_method', this._fields['serve_method_webui']);
-        
+
         this._fields['serve_method_standalone'] = fieldset.add({
             name: 'serve_method',
             boxLabel: 'Serve files via standalone',
@@ -115,15 +115,15 @@ PreferencePage = Ext.extend(Ext.Panel, {
             disabled: true
         });
         om.bind('serve_method', this._fields['serve_method_standalone']);
-        
-        
+
+
         om.bind('use_ssl', fieldset.add({
             xtype: 'checkbox',
             name: 'use_ssl',
             boxLabel: 'Use SSL',
             style: 'margin-left: 12px;'
         }));
-        
+
         fieldset = this.add({
 			xtype: 'fieldset',
 			border: false,
@@ -133,7 +133,7 @@ PreferencePage = Ext.extend(Ext.Panel, {
 			width: 240,
             labelWidth: 1
 		});
-		
+
         this._fields['ssl_source_daemon'] = fieldset.add({
             name: 'ssl_source',
             boxLabel: 'Use Daemon/WebUI Certificate',
@@ -141,7 +141,7 @@ PreferencePage = Ext.extend(Ext.Panel, {
             value: 'daemon'
         })
         om.bind('ssl_source', this._fields['ssl_source_daemon']);
-        
+
         this._fields['ssl_source_custom'] = fieldset.add({
             name: 'ssl_source',
             boxLabel: 'Custom Certificate',
@@ -149,7 +149,7 @@ PreferencePage = Ext.extend(Ext.Panel, {
             value: 'custom'
         });
         om.bind('ssl_source', this._fields['ssl_source_custom']);
-        
+
         fieldset = this.add({
             xtype: 'fieldset',
             border: false,
@@ -161,17 +161,17 @@ PreferencePage = Ext.extend(Ext.Panel, {
                 width: 130,
             }
         });
-        
+
         om.bind('ssl_priv_key_path', fieldset.add({
             name: 'ssl_priv_key_path',
             fieldLabel: 'Private key file path'
         }));
-        
+
         om.bind('ssl_cert_path', fieldset.add({
             name: 'ssl_cert_path',
             fieldLabel: 'Certificate and chains file path'
         }));
-        
+
         fieldset = this.add({
             xtype: 'fieldset',
             border: false,
@@ -184,14 +184,14 @@ PreferencePage = Ext.extend(Ext.Panel, {
                 width: 180,
             }
         });
-        
+
         om.bind('allow_remote', fieldset.add({
             xtype: 'checkbox',
             name: 'allow_remote',
             boxLabel: 'Allow remote control',
             style: 'margin-left: 12px;'
         }));
-        
+
         fieldset = this.add({
             xtype: 'fieldset',
             border: false,
@@ -203,19 +203,28 @@ PreferencePage = Ext.extend(Ext.Panel, {
                 width: 180,
             }
         });
-        
+
         om.bind('remote_username', fieldset.add({
             xtype: 'textfield',
             name: 'remote_username',
             fieldLabel: 'Remote control username'
         }));
-        
+
         om.bind('remote_password', fieldset.add({
             xtype: 'textfield',
+            inputType: 'password',
             name: 'remote_password',
             fieldLabel: 'Remote control password'
         }));
-        
+
+        fieldset.add({
+            xtype: 'textfield',
+            id: 'remote_url',
+            name: 'remote_url',
+            readOnly: true,
+            fieldLabel: 'Remote control url'
+        });
+
         fieldset = this.add({
             xtype: 'fieldset',
             border: false,
@@ -227,14 +236,14 @@ PreferencePage = Ext.extend(Ext.Panel, {
                 width: 180,
             }
         });
-        
+
         om.bind('use_stream_urls', fieldset.add({
             xtype: 'checkbox',
             name: 'use_stream_urls',
             boxLabel: 'Use stream urls',
             style: 'margin-left: 12px;'
         }));
-        
+
         om.bind('auto_open_stream_urls', fieldset.add({
             xtype: 'checkbox',
             name: 'auto_open_stream_urls',
@@ -244,7 +253,7 @@ PreferencePage = Ext.extend(Ext.Panel, {
     },
 
     onApply: function() {
-        
+
         var changed = this.optionsManager.getDirty();
         for (var key in this._fields) {
             if (this._fields.hasOwnProperty(key)) {
@@ -259,13 +268,13 @@ PreferencePage = Ext.extend(Ext.Panel, {
                 success: this.onSetConfig,
                 scope: this
             });
-        
+
             for (var key in deluge.config) {
                 deluge.config[key] = this.optionsManager.get(key);
             }
         }
     },
-    
+
     onSetConfig: function(result) {
         this.optionsManager.commit();
         if (result) {
@@ -280,17 +289,27 @@ PreferencePage = Ext.extend(Ext.Panel, {
                 Ext.Msg.alert(topic, message);
             }
         }
+        this.updateRemoteUrl(this.optionsManager);
     },
-    
+
     onGotConfig: function(config) {
         this.optionsManager.set(config);
+        this.updateRemoteUrl(this.optionsManager);
     },
-    
+
     onPageShow: function() {
         deluge.client.streaming.get_config({
             success: this.onGotConfig,
             scope: this
         })
+    },
+
+    updateRemoteUrl: function(optionsManager) {
+        var apiUrl = 'http';
+        if (optionsManager.get('use_ssl'))
+            apiUrl += 's';
+        apiUrl += '://' + optionsManager.get('ip') + ':' + optionsManager.get('port') + '/streaming/stream';
+        Ext.getCmp('remote_url').setValue(apiUrl);
     }
 });
 
@@ -299,7 +318,7 @@ StreamingPlugin = Ext.extend(Deluge.Plugin, {
 
 	onDisable: function() {
         deluge.menus.filePriorities.remove('streamthis');
-        
+
         deluge.preferences.selectPage(_('Plugins'));
         deluge.preferences.removePage(this.prefsPage);
         this.prefsPage.destroy();
@@ -308,7 +327,7 @@ StreamingPlugin = Ext.extend(Deluge.Plugin, {
     onEnable: function() {
         this.prefsPage = new PreferencePage();
         deluge.preferences.addPage(this.prefsPage);
-        
+
         console.log('Streaming plugin loaded');
         var doStream = function (tid, fileIndex) {
             deluge.client.streaming.stream_torrent(tid, null, null, fileIndex, true, {
@@ -330,8 +349,8 @@ StreamingPlugin = Ext.extend(Deluge.Plugin, {
                 }
             })
         }
-        
-        
+
+
         deluge.menus.filePriorities.addMenuItem({
             id: 'streamthis',
             text: 'Stream this file',
@@ -350,7 +369,7 @@ StreamingPlugin = Ext.extend(Deluge.Plugin, {
                 return false;
             }
         });
-        
+
         deluge.menus.torrent.addMenuItem({
             id: 'streamthistorrent',
             text: 'Stream this torrent',
