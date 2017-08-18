@@ -579,7 +579,7 @@
                     </child>
                     <child>
                       <widget class="GtkCheckButton" id="input_use_stream_urls">
-                        <property name="label" translatable="yes">Use stream urls</property>
+                        <property name="label" translatable="yes">Use stream protocol urls</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
@@ -594,7 +594,7 @@
                     </child>
                     <child>
                       <widget class="GtkCheckButton" id="input_auto_open_stream_urls">
-                        <property name="label" translatable="yes">Auto-open stream urls</property>
+                        <property name="label" translatable="yes">Auto-open stream protocol urls</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
