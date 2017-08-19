@@ -240,14 +240,14 @@ PreferencePage = Ext.extend(Ext.Panel, {
         om.bind('use_stream_urls', fieldset.add({
             xtype: 'checkbox',
             name: 'use_stream_urls',
-            boxLabel: 'Use stream urls',
+            boxLabel: 'Use stream protocol urls',
             style: 'margin-left: 12px;'
         }));
 
         om.bind('auto_open_stream_urls', fieldset.add({
             xtype: 'checkbox',
             name: 'auto_open_stream_urls',
-            boxLabel: 'Auto-open stream urls',
+            boxLabel: 'Auto-open stream protocol urls',
             style: 'margin-left: 12px;'
         }));
     },

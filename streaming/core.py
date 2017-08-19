@@ -634,7 +634,7 @@ class Core(CorePluginBase):
 
             port = self.config['port']
             ip = self.config['ip']
-        elif self.config['serve_method'] == 'webui': # this webserver is fubar
+        elif self.config['serve_method'] == 'webui' and self.check_webui(): # this webserver is fubar
             plugin_manager = component.get("CorePluginManager")
 
             webui_plugin = plugin_manager['WebUi'].plugin
@@ -658,13 +658,14 @@ class Core(CorePluginBase):
         self.site.stopFactory()
         self.torrent_handler.shutdown()
 
-        plugin_manager = component.get("CorePluginManager")
-        webui_plugin = plugin_manager['WebUi'].plugin
+        if self.check_webui():
+            plugin_manager = component.get("CorePluginManager")
+            webui_plugin = plugin_manager['WebUi'].plugin
 
-        try:
-            webui_plugin.server.top_level.delEntity('streaming')
-        except KeyError:
-            pass
+            try:
+                webui_plugin.server.top_level.delEntity('streaming')
+            except KeyError:
+                pass
 
         if self.listening:
             yield self.listening.stopListening()

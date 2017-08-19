@@ -27,6 +27,14 @@ Under that tab, eggs for Python 2.6 and 2.7 should exist.
 
 If you want to stream from a non-local computer, e.g. your seedbox, you will need to change the IP in option to the external server ip.
 
+## Open directly in your video player
+
+By using a small tool it is possible to it's possible to open streams directly in VLC or another media player.
+
+* Download and install [StreamProtocol](http://streamprotocol.tidalstream.org/)
+* Go into Deluge Streaming options and enable "Use stream protocol urls"
+* Optional, if you want to skip the popup and open streams directly when ready, enable "Auto-open stream protocol urls"
+
 ## Motivation
 
 The plugin is not meant to be used as a right-click to stream thing. The idea is to
@@ -35,6 +43,10 @@ make Deluge an abstraction layer for the [TidalStream](http://www.tidalstream.or
 The _allow remote_ option is to allow remote add and stream of torrents.
 
 # Version Info
+
+## Version 0.8.1
+* Fixed some small problems and bugs
+* better URL execution with GTKUI
 
 ## Version 0.8.0
 * Improved remote control of streaming to make it work as originally intended.
