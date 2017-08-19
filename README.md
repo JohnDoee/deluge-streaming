@@ -36,6 +36,10 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 
 # Version Info
 
+## Version 0.8.1
+* Fixed some small problems and bugs
+* better URL execution with GTKUI
+
 ## Version 0.8.0
 * Improved remote control of streaming to make it work as originally intended.
 
