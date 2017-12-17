@@ -2,22 +2,18 @@ from twisted.internet import defer
 from twisted.python import log
 from twisted.web import http, resource, server, static
 
-#  NOTICE!
-# All these producers are taken directly from the Twisted Project.
-# This is because i needed to make them accept defers.
-# /NOTICE!
 
 class NoRangeStaticProducer(static.NoRangeStaticProducer):
     @defer.inlineCallbacks
     def resumeProducing(self):
         if not self.request:
             return
-        
+
         data = yield defer.maybeDeferred(self.fileObject.read, self.bufferSize)
-        
+
         if not self.request:
             return
-        
+
         if data:
             # this .write will spin the reactor, calling .doWrite and then
             # .resumeProducing again, so be prepared for a re-entrant call
@@ -27,35 +23,37 @@ class NoRangeStaticProducer(static.NoRangeStaticProducer):
             self.request.finish()
             self.stopProducing()
 
+
 class SingleRangeStaticProducer(static.SingleRangeStaticProducer):
     @defer.inlineCallbacks
     def resumeProducing(self):
         if not self.request:
             return
-        
+
         data = yield defer.maybeDeferred(self.fileObject.read,
             min(self.bufferSize, self.size - self.bytesWritten))
-        
+
         if not self.request:
             return
-        
+
         if data:
             self.bytesWritten += len(data)
             # this .write will spin the reactor, calling .doWrite and then
             # .resumeProducing again, so be prepared for a re-entrant call
             self.request.write(data)
-        
+
         if self.request and self.bytesWritten == self.size:
             self.request.unregisterProducer()
             self.request.finish()
             self.stopProducing()
+
 
 class MultipleRangeStaticProducer(static.MultipleRangeStaticProducer):
     @defer.inlineCallbacks
     def resumeProducing(self):
         if not self.request:
             return
-        
+
         data = []
         dataLength = 0
         done = False
@@ -76,17 +74,18 @@ class MultipleRangeStaticProducer(static.MultipleRangeStaticProducer):
                 except StopIteration:
                     done = True
                     break
-        
+
         if not self.request:
             return
-        
+
         self.request.write(''.join(data))
-        
+
         if done:
             self.request.unregisterProducer()
             self.request.finish()
             self.stopProducing()
             self.request = None
+
 
 class FilelikeObjectResource(static.File):
     isLeaf = True
