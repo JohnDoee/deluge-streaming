@@ -30,8 +30,7 @@ class SingleRangeStaticProducer(static.SingleRangeStaticProducer):
         if not self.request:
             return
 
-        data = yield defer.maybeDeferred(self.fileObject.read,
-            min(self.bufferSize, self.size - self.bytesWritten))
+        data = yield defer.maybeDeferred(self.fileObject.read, min(self.bufferSize, self.size - self.bytesWritten))
 
         if not self.request:
             return
@@ -62,9 +61,7 @@ class MultipleRangeStaticProducer(static.MultipleRangeStaticProducer):
                 dataLength += len(self.partBoundary)
                 data.append(self.partBoundary)
                 self.partBoundary = None
-            p = yield defer.maybeDeferred(self.fileObject.read,
-                min(self.bufferSize - dataLength,
-                    self._partSize - self._partBytesWritten))
+            p = yield defer.maybeDeferred(self.fileObject.read, min(self.bufferSize - dataLength, self._partSize - self._partBytesWritten))
             self._partBytesWritten += len(p)
             dataLength += len(p)
             data.append(p)

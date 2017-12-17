@@ -37,7 +37,6 @@
 #    statement from all source files in the program, then also delete it here.
 #
 
-import json
 import gtk
 import os
 import subprocess
@@ -50,8 +49,7 @@ from deluge.plugins.pluginbase import GtkPluginBase
 import deluge.component as component
 import deluge.common
 
-from twisted.internet import reactor, defer, threads
-from twisted.web import server, resource
+from twisted.internet import defer, threads
 
 from common import get_resource
 

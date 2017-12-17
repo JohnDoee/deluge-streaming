@@ -50,12 +50,12 @@ from copy import copy
 
 from deluge import component, configmanager
 from deluge._libtorrent import lt
-from deluge.core.rpcserver import export, check_ssl_keys
+from deluge.core.rpcserver import export
 from deluge.plugins.pluginbase import CorePluginBase
 
-from twisted.internet import reactor, defer, task
+from twisted.internet import reactor, defer
 from twisted.python import randbytes
-from twisted.web import server, resource, static, http, client
+from twisted.web import server, resource, static, client
 
 from .filelike import FilelikeObjectResource
 from .resource import Resource
@@ -80,10 +80,12 @@ DEFAULT_PREFS = {
 
 PRIORITY_INCREASE = 5
 
+
 def sleep(seconds):
     d = defer.Deferred()
     reactor.callLater(seconds, d.callback, seconds)
     return d
+
 
 class ServerContextFactory(object):
     def __init__(self, cert_file, key_file):
@@ -102,6 +104,7 @@ class ServerContextFactory(object):
         ctx.use_certificate_chain_file(self._cert_file)
         ctx.use_privatekey_file(self._key_file)
         return ctx
+
 
 class FileServeResource(resource.Resource):
     isLeaf = True
@@ -130,6 +133,7 @@ class FileServeResource(resource.Resource):
         else:
             tfr = f.open()
             return FilelikeObjectResource(tfr, f.size).render_GET(request)
+
 
 class StreamResource(Resource):
     isLeaf = True
@@ -180,11 +184,14 @@ class StreamResource(Resource):
         result = yield self.client.stream_torrent(infohash=infohash, filepath_or_index=path, wait_for_end_pieces=wait_for_end_pieces)
         defer.returnValue(json.dumps(result))
 
+
 class UnknownTorrentException(Exception):
     pass
 
+
 class UnknownFileException(Exception):
     pass
+
 
 class TorrentFileReader(object):
     def __init__(self, torrent_file):
@@ -222,7 +229,8 @@ class TorrentFileReader(object):
     def seek(self, offset, whence=os.SEEK_SET):
         self.position = offset
 
-class TorrentFile(object): # can be read from, knows about itself
+
+class TorrentFile(object):  # can be read from, knows about itself
     def __init__(self, torrent, first_piece, last_piece, piece_size, offset, path, full_path, size, index):
         self.torrent = torrent
         self.first_piece = first_piece
@@ -243,7 +251,6 @@ class TorrentFile(object): # can be read from, knows about itself
         self.registered_alert = False
 
         self.alerts = component.get("AlertManager")
-
 
     def open(self):
         """
@@ -335,6 +342,7 @@ class TorrentFile(object): # can be read from, knows about itself
     def shutdown(self):
         self.do_shutdown = True
 
+
 class Torrent(object):
     def __init__(self, torrent_handler, infohash):
         self.infohash = infohash
@@ -347,8 +355,7 @@ class Torrent(object):
         self.torrent_files = None
         self.priority_increased = defaultdict(set)
         self.do_shutdown = False
-        self.torrent_released = True # set to True if all the files are set to download
-
+        self.torrent_released = True  # set to True if all the files are set to download
 
         self.populate_files()
         self.file_priorities = [0] * len(self.torrent_files)
@@ -427,7 +434,7 @@ class Torrent(object):
         if self.torrent_released:
             should_update_priorities = True
 
-        if should_update_priorities and not f.is_complete(): # Need to do this stuff on seek too
+        if should_update_priorities and not f.is_complete():  # Need to do this stuff on seek too
             self.torrent.set_file_priorities(self.file_priorities)
 
         return f
@@ -456,7 +463,7 @@ class Torrent(object):
         for tf in self.torrent_files:
             tf.shutdown()
 
-    def update_piece_priority(self): # if file streamed has reached end, unblacklist all prior pieces
+    def update_piece_priority(self):  # if file streamed has reached end, unblacklist all prior pieces
         if self.do_shutdown:
             return
 
@@ -464,13 +471,13 @@ class Torrent(object):
         currently_downloading = self.get_currently_downloading()
 
         for f in self.torrent_files:
-            if not f.file_requested and not f.current_readers: # nobody wants the file and nobody is watching
+            if not f.file_requested and not f.current_readers:  # nobody wants the file and nobody is watching
                 continue
 
             logger.debug('Rescheduling file %s' % (f.path, ))
 
             heads = set()
-            if f.file_requested: # we expect a piece head to be at start
+            if f.file_requested:  # we expect a piece head to be at start
                 heads.add(f.first_piece)
 
             waiting_for_pieces = set()
@@ -480,7 +487,7 @@ class Torrent(object):
                     waiting_for_pieces.add(tfr.waiting_for_piece)
 
                 piece = max(tfr.waiting_for_piece, tfr.current_piece)
-                if  piece is not None:
+                if piece is not None:
                     heads.add(piece)
 
             if not heads:
@@ -491,7 +498,6 @@ class Torrent(object):
             for head_piece in heads:
                 priority_increased = 0
                 for piece, status in enumerate(self.torrent.status.pieces[head_piece:f.last_piece+1], head_piece):
-                    #logger.debug('Checking status for %s/%s/%s/%s' % (head_piece, piece, status, self.torrent.handle.piece_priority(piece)))
                     if status or piece in currently_downloading:
                         continue
 
@@ -547,6 +553,7 @@ class Torrent(object):
 
         reactor.callLater(1, self.update_piece_priority)
 
+
 class TorrentHandler(object):
     def __init__(self, config):
         self.torrents = {}
@@ -584,6 +591,7 @@ class TorrentHandler(object):
         for torrent in self.torrents.values():
             torrent.shutdown()
 
+
 class Core(CorePluginBase):
     listening = None
     base_url = None
@@ -618,7 +626,7 @@ class Core(CorePluginBase):
 
         self.base_url = 'http'
         if self.config['serve_method'] == 'standalone':
-            if self.config['use_ssl'] and self.check_ssl(): # use default deluge (or webui), input custom
+            if self.config['use_ssl'] and self.check_ssl():  # use default deluge (or webui), input custom
                 if self.config['ssl_source'] == 'daemon':
                     web_config = configmanager.ConfigManager("web.conf", {"pkey": "ssl/daemon.pkey",
                                                                           "cert": "ssl/daemon.cert"})
@@ -642,7 +650,7 @@ class Core(CorePluginBase):
 
             port = self.config['port']
             ip = self.config['ip']
-        elif self.config['serve_method'] == 'webui' and self.check_webui(): # this webserver is fubar
+        elif self.config['serve_method'] == 'webui' and self.check_webui():  # this webserver is fubar
             plugin_manager = component.get("CorePluginManager")
 
             webui_plugin = plugin_manager['WebUi'].plugin
