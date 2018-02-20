@@ -37,7 +37,6 @@
 #    statement from all source files in the program, then also delete it here.
 #
 
-import json
 import gtk
 import os
 import subprocess
@@ -50,8 +49,7 @@ from deluge.plugins.pluginbase import GtkPluginBase
 import deluge.component as component
 import deluge.common
 
-from twisted.internet import reactor, defer, threads
-from twisted.web import server, resource
+from twisted.internet import defer, threads
 
 from common import get_resource
 
@@ -69,6 +67,13 @@ def execute_url(url):
 
 
 class GtkUI(GtkPluginBase):
+    def get_widget(self, widget_name):
+        main_window = component.get("MainWindow")
+        if hasattr(main_window, 'main_glade'):
+            return main_window.main_glade.get_widget(widget_name)
+        else:
+            return main_window.main_builder.get_object(widget_name)
+
     def enable(self):
         self.glade = gtk.glade.XML(get_resource("config.glade"))
 
@@ -76,7 +81,7 @@ class GtkUI(GtkPluginBase):
         component.get("PluginManager").register_hook("on_apply_prefs", self.on_apply_prefs)
         component.get("PluginManager").register_hook("on_show_prefs", self.on_show_prefs)
 
-        file_menu = component.get("MainWindow").main_glade.get_widget('menu_file_tab')
+        file_menu = self.get_widget('menu_file_tab')
 
         self.sep = gtk.SeparatorMenuItem()
         self.item = gtk.MenuItem(_("_Stream this file"))
@@ -105,7 +110,7 @@ class GtkUI(GtkPluginBase):
         component.get("PluginManager").deregister_hook("on_apply_prefs", self.on_apply_prefs)
         component.get("PluginManager").deregister_hook("on_show_prefs", self.on_show_prefs)
 
-        file_menu = component.get("MainWindow").main_glade.get_widget('menu_file_tab')
+        file_menu = self.get_widget('menu_file_tab')
 
         file_menu.remove(self.item)
         file_menu.remove(self.sep)

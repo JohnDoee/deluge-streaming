@@ -44,6 +44,10 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 
 # Version Info
 
+## Version 0.9.0
+* Few bugfixes
+* Added support for Deluge 2
+
 ## Version 0.8.1
 * Fixed some small problems and bugs
 * better URL execution with GTKUI
