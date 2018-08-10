@@ -124,10 +124,11 @@ class GtkUI(GtkPluginBase):
     def on_apply_prefs(self):
         log.debug("applying prefs for Streaming")
 
-        if self.glade.get_widget("input_serve_standalone").get_active():
-            serve_method = 'standalone'
-        elif self.glade.get_widget("input_serve_webui").get_active():
-            serve_method = 'webui'
+        serve_method = 'standalone'
+        # if self.glade.get_widget("input_serve_standalone").get_active():
+        #     serve_method = 'standalone'
+        # elif self.glade.get_widget("input_serve_webui").get_active():
+        #     serve_method = 'webui'
 
         if self.glade.get_widget("input_ssl_cert_daemon").get_active():
             ssl_source = 'daemon'
@@ -141,8 +142,9 @@ class GtkUI(GtkPluginBase):
             "auto_open_stream_urls": self.glade.get_widget("input_auto_open_stream_urls").get_active(),
             "allow_remote": self.glade.get_widget("input_allow_remote").get_active(),
             "download_only_streamed": self.glade.get_widget("input_download_only_streamed").get_active(),
+            # "download_in_order": self.glade.get_widget("input_download_in_order").get_active(),
             "use_ssl": self.glade.get_widget("input_use_ssl").get_active(),
-            "remote_username": self.glade.get_widget("input_remote_username").get_text(),
+            # "remote_username": self.glade.get_widget("input_remote_username").get_text(),
             "remote_password": self.glade.get_widget("input_remote_password").get_text(),
             "ssl_priv_key_path": self.glade.get_widget("input_ssl_priv_key_path").get_text(),
             "ssl_cert_path": self.glade.get_widget("input_ssl_cert_path").get_text(),
@@ -173,18 +175,20 @@ class GtkUI(GtkPluginBase):
         self.glade.get_widget("input_allow_remote").set_active(config["allow_remote"])
         self.glade.get_widget("input_use_ssl").set_active(config["use_ssl"])
         self.glade.get_widget("input_download_only_streamed").set_active(config["download_only_streamed"])
-        self.glade.get_widget("input_remote_username").set_text(config["remote_username"])
+        # self.glade.get_widget("input_download_in_order").set_active(config["download_in_order"])
+        # self.glade.get_widget("input_download_everything").set_active(not config["download_in_order"] and not config["download_only_streamed"])
+        # self.glade.get_widget("input_remote_username").set_text(config["remote_username"])
         self.glade.get_widget("input_remote_password").set_text(config["remote_password"])
         self.glade.get_widget("input_ssl_priv_key_path").set_text(config["ssl_priv_key_path"])
         self.glade.get_widget("input_ssl_cert_path").set_text(config["ssl_cert_path"])
 
-        self.glade.get_widget("input_serve_standalone").set_active(config["serve_method"] == "standalone")
-        self.glade.get_widget("input_serve_webui").set_active(config["serve_method"] == "webui")
+        # self.glade.get_widget("input_serve_standalone").set_active(config["serve_method"] == "standalone")
+        # self.glade.get_widget("input_serve_webui").set_active(config["serve_method"] == "webui")
 
         self.glade.get_widget("input_ssl_cert_daemon").set_active(config["ssl_source"] == "daemon")
         self.glade.get_widget("input_ssl_cert_custom").set_active(config["ssl_source"] == "custom")
 
-        api_url = 'http%s://%s:%s/streaming/stream' % (('s' if config["use_ssl"] else ''), config["ip"], config["port"])
+        api_url = 'http%s://%s:%s@%s:%s/streaming/stream' % (('s' if config["use_ssl"] else ''), config["remote_username"], config["remote_password"], config["ip"], config["port"])
         self.glade.get_widget("output_remote_url").set_text(api_url)
 
     def stream_ready(self, result):

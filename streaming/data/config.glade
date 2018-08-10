@@ -26,19 +26,26 @@
                     <property name="can_focus">False</property>
                     <property name="spacing">5</property>
                     <child>
-                      <widget class="GtkCheckButton" id="input_download_only_streamed">
-                        <property name="label" translatable="yes">Download only streamed files, skip the other files</property>
+                      <widget class="GtkVBox" id="settings_vbox">
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="receives_default">False</property>
-                        <property name="use_action_appearance">False</property>
-                        <property name="draw_indicator">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="spacing">5</property>
+                        <child>
+                          <widget class="GtkCheckButton" id="input_download_only_streamed">
+                            <property name="label" translatable="yes">Download only streamed files, skip the other files</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">False</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="draw_indicator">True</property>
+                          </widget>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">False</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
                       </widget>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">False</property>
-                        <property name="position">0</property>
-                      </packing>
                     </child>
                   </widget>
                 </child>
@@ -159,10 +166,10 @@
                         <property name="position">1</property>
                       </packing>
                     </child>
-                    <child>
+                    <!-- <child>
                       <widget class="GtkRadioButton" id="input_serve_webui">
                         <property name="label" translatable="yes">Serve files via WebUI</property>
-                        <property name="visible">True</property>
+                        <property name="visible">False</property>
                         <property name="sensitive">False</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
@@ -175,16 +182,16 @@
                         <property name="fill">True</property>
                         <property name="position">2</property>
                       </packing>
-                    </child>
+                    </child> -->
                     <child>
                       <widget class="GtkVBox" id="settings_vbox3">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="spacing">5</property>
-                        <child>
+                        <!-- <child>
                           <widget class="GtkRadioButton" id="input_serve_standalone">
                             <property name="label" translatable="yes">Serve files via standalone</property>
-                            <property name="visible">True</property>
+                            <property name="visible">False</property>
                             <property name="sensitive">False</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
@@ -198,12 +205,12 @@
                             <property name="fill">True</property>
                             <property name="position">0</property>
                           </packing>
-                        </child>
+                        </child> -->
                         <child>
                           <widget class="GtkAlignment" id="remote_alignment1">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="left_padding">20</property>
+                            <!-- <property name="left_padding">20</property> -->
                             <child>
                               <widget class="GtkVBox" id="remote_vbox1">
                                 <property name="visible">True</property>
@@ -436,7 +443,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="spacing">5</property>
-                                <child>
+                                <!-- <child>
                                   <widget class="GtkHBox" id="remote_username_hbox1">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
@@ -476,7 +483,7 @@
                                     <property name="fill">False</property>
                                     <property name="position">0</property>
                                   </packing>
-                                </child>
+                                </child> -->
                                 <child>
                                   <widget class="GtkHBox" id="remote_password_hbox1">
                                     <property name="visible">True</property>
@@ -498,7 +505,7 @@
                                       <widget class="GtkEntry" id="input_remote_password">
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
-                                        <property name="visibility">False</property>
+                                        <property name="visibility">True</property>
                                         <property name="invisible_char">•</property>
                                         <property name="invisible_char_set">True</property>
                                         <property name="primary_icon_activatable">False</property>

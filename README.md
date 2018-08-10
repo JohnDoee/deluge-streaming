@@ -42,7 +42,19 @@ make Deluge an abstraction layer for the [TidalStream](http://www.tidalstream.or
 
 The _allow remote_ option is to allow remote add and stream of torrents.
 
+## Todo
+
+* [x] Add RAR streaming support
+* [ ] Better feedback in interface about streams
+* [ ] Better feedback when using API
+* [ ] Reverse proxy improvement (e.g. port different than bind port)
+
 # Version Info
+
+## Version 0.10.0
+* Rewrote large parts of the code
+* Now using [thomas](https://github.com/JohnDoee/thomas) as file-reading core - this adds support for multi-rar streaming.
+* Faster streaming by reading directly from disk
 
 ## Version 0.9.0
 * Few bugfixes

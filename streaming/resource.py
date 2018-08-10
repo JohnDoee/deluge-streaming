@@ -29,8 +29,6 @@ class Resource(TwistedResource):
                             authenticated = True
 
             if not authenticated:
-                print auth_header
-                print self.username, self.password
                 request.setResponseCode(401)
                 return 'Unauthorized'
 
