@@ -204,15 +204,14 @@ PreferencePage = Ext.extend(Ext.Panel, {
             }
         });
 
-        om.bind('remote_username', fieldset.add({
-            xtype: 'textfield',
-            name: 'remote_username',
-            fieldLabel: 'Remote control username'
-        }));
+        // om.bind('remote_username', fieldset.add({
+        //     xtype: 'textfield',
+        //     name: 'remote_username',
+        //     fieldLabel: 'Remote control username'
+        // }));
 
         om.bind('remote_password', fieldset.add({
             xtype: 'textfield',
-            inputType: 'password',
             name: 'remote_password',
             fieldLabel: 'Remote control password'
         }));
@@ -308,7 +307,7 @@ PreferencePage = Ext.extend(Ext.Panel, {
         var apiUrl = 'http';
         if (optionsManager.get('use_ssl'))
             apiUrl += 's';
-        apiUrl += '://' + optionsManager.get('ip') + ':' + optionsManager.get('port') + '/streaming/stream';
+        apiUrl += '://' + optionsManager.get('remote_username') + ':' + optionsManager.get('remote_password') + '@' + optionsManager.get('ip') + ':' + optionsManager.get('port') + '/streaming/stream';
         Ext.getCmp('remote_url').setValue(apiUrl);
     }
 });

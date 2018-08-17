@@ -48,6 +48,7 @@ import deluge.configmanager
 
 from copy import copy
 from datetime import datetime, timedelta
+from types import MethodType
 
 from deluge import component, configmanager
 from deluge._libtorrent import lt
@@ -88,6 +89,24 @@ DEFAULT_PREFS = {
 
 logger = logging.getLogger(__name__)
 
+def get_torrent(infohash):
+    def get_file_priorities(self):
+        """Return the file priorities"""
+        if not self.handle.has_metadata():
+            return []
+
+        if not self.options["file_priorities"]:
+            # Ensure file_priorities option is populated.
+            self.set_file_priorities([])
+
+        return self.options["file_priorities"]
+
+    torrent = component.get("TorrentManager").torrents.get(infohash, None)
+    if torrent and not hasattr(torrent, 'get_file_priorities'):
+        torrent.get_file_priorities = MethodType(get_file_priorities, torrent)
+
+    return torrent
+
 
 class Torrent(object):
     def __init__(self, torrent_handler, infohash):
@@ -99,7 +118,7 @@ class Torrent(object):
         self.cycle_lock = defer.DeferredLock()
         self.last_activity = datetime.now()
 
-        self.torrent = component.get("TorrentManager").torrents.get(infohash, None)
+        self.torrent = get_torrent(infohash)
         status = self.torrent.get_status(['piece_length'])
         self.piece_length = status['piece_length']
         self.torrent.handle.set_sequential_download(True)
@@ -194,6 +213,8 @@ class Torrent(object):
             first_files.add(fileset['files'][0])
 
         if found_not_started:
+            self.torrent.resume()
+
             logger.debug('We had a fileset not started, must_whitelist:%r first_files:%r cannot_blacklist:%r' % (must_whitelist, first_files, cannot_blacklist))
             status = self.torrent.get_status(['files', 'file_progress'])
 
@@ -354,7 +375,7 @@ class TorrentHandler(object):
         self.cleanup_looping_call.stop()
 
     def get_filesystem(self, infohash):
-        torrent = component.get("TorrentManager").torrents.get(infohash, None)
+        torrent = get_torrent(infohash)
         status = torrent.get_status(['piece_length', 'files', 'file_progress', 'save_path'])
         self.piece_length = status['piece_length']
         save_path = status['save_path']
@@ -666,7 +687,7 @@ class Core(CorePluginBase):
     @defer.inlineCallbacks
     def stream_torrent(self, infohash=None, url=None, filedump=None, filepath_or_index=None, includes_name=False, wait_for_end_pieces=False):
         logger.debug('Trying to stream infohash:%s, url:%s, filepath_or_index:%s' % (infohash, url, filepath_or_index))
-        torrent = component.get("TorrentManager").torrents.get(infohash, None)
+        torrent = get_torrent(infohash)
 
         if torrent is None:
             logger.info('Did not find torrent, must add it')
