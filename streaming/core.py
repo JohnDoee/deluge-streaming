@@ -124,6 +124,10 @@ class Torrent(object):
         self.torrent.handle.set_sequential_download(True)
         self.torrent.handle.set_priority(1)
 
+    def ensure_started(self):
+        if self.torrent.status.paused:
+            self.torrent.resume()
+
     def get_file_from_offset(self, offset):
         status = self.torrent.get_status(['files'])
         last_file = None
@@ -135,21 +139,19 @@ class Torrent(object):
         return last_file
 
     def can_read(self, from_byte):
+        self.ensure_started()
+
         needed_piece, rest = divmod(from_byte, self.piece_length)
-        if rest:
-            real_needed_piece = needed_piece
-        else:
-            real_needed_piece = needed_piece + 1
         last_available_piece = None
-        for piece, status in enumerate(self.torrent.status.pieces[real_needed_piece:], real_needed_piece):
+        for piece, status in enumerate(self.torrent.status.pieces[needed_piece:], needed_piece):
             if not status:
                 break
             last_available_piece = piece
 
         if last_available_piece is None:
-            logger.debug('Since we are waiting for a piece, setting priority for %s to max' % (real_needed_piece, ))
-            self.torrent.handle.set_piece_deadline(real_needed_piece, 0)
-            self.torrent.handle.piece_priority(real_needed_piece, 7)
+            logger.debug('Since we are waiting for a piece, setting priority for %s to max' % (needed_piece, ))
+            self.torrent.handle.set_piece_deadline(needed_piece, 0)
+            self.torrent.handle.piece_priority(needed_piece, 7)
 
             f = self.get_file_from_offset(from_byte)
             logger.debug('Also setting file to max %r' % (f, ))
@@ -158,7 +160,7 @@ class Torrent(object):
             self.torrent.set_file_priorities(file_priorities)
 
             for _ in range(300):
-                if self.torrent.status.pieces[real_needed_piece]:
+                if self.torrent.status.pieces[needed_piece]:
                     break
                 if not reactor.running:
                     return
@@ -167,7 +169,7 @@ class Torrent(object):
             logger.debug('Calling read again to get the real number')
             return self.can_read(from_byte)
         else:
-            return ((last_available_piece - needed_piece) * self.piece_length) + rest
+            return ((last_available_piece - needed_piece) * self.piece_length) + rest + self.piece_length
 
     def is_idle(self):
         return not self.readers and self.last_activity + TORRENT_CLEANUP_INTERVAL < datetime.now()
@@ -213,7 +215,7 @@ class Torrent(object):
             first_files.add(fileset['files'][0])
 
         if found_not_started:
-            self.torrent.resume()
+            self.ensure_started()
 
             logger.debug('We had a fileset not started, must_whitelist:%r first_files:%r cannot_blacklist:%r' % (must_whitelist, first_files, cannot_blacklist))
             status = self.torrent.get_status(['files', 'file_progress'])
@@ -434,12 +436,13 @@ class TorrentHandler(object):
         return item
 
     def get_torrent(self, infohash):
+        if infohash not in self.torrents:
+            self.torrents[infohash] = Torrent(self, infohash)
         return self.torrents[infohash]
 
     def stream(self, infohash, path):
         logger.debug('Trying to get path:%s from infohash:%s' % (path, infohash))
-        if infohash not in self.torrents:
-            self.torrents[infohash] = Torrent(self, infohash)
+        self.get_torrent(infohash)
 
         filesystem = self.get_filesystem(infohash)
         if path:
