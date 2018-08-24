@@ -35,7 +35,10 @@ PreferencePage = Ext.extend(Ext.Panel, {
     title: 'Streaming',
     border: false,
     layout: 'form',
+    header: false,
     autoScroll: true,
+    autoHeight: true,
+    width: 320,
     _fields: {},
 
     initComponent: function() {
@@ -50,10 +53,12 @@ PreferencePage = Ext.extend(Ext.Panel, {
             title: 'Settings',
             style: 'margin-bottom: 0px; padding-bottom: 0px; padding-top: 5px',
             autoHeight: true,
-            labelWidth: 1,
+            labelAlign: 'top',
+            labelWidth: 150,
+            width: 300,
             defaultType: 'textfield',
             defaults: {
-                width: 180,
+                width: 280,
             }
         });
 
@@ -69,10 +74,12 @@ PreferencePage = Ext.extend(Ext.Panel, {
             title: 'File Serving Settings',
             style: 'margin-bottom: 0px; padding-bottom: 0px; padding-top: 5px',
             autoHeight: true,
-            labelWidth: 110,
+            labelAlign: 'top',
+            labelWidth: 150,
+            width: 280,
             defaultType: 'textfield',
             defaults: {
-                width: 180,
+                width: 260,
             }
         });
 
@@ -89,13 +96,22 @@ PreferencePage = Ext.extend(Ext.Panel, {
             maxValue: 99999,
         }));
 
+        var field = fieldset.add({
+            xtype: 'togglefield',
+            name: 'reverse_proxy_base_url',
+            fieldLabel: 'Reverse Proxy Config',
+        });
+
+        om.bind('reverse_proxy_enabled', field.toggle);
+        om.bind('reverse_proxy_base_url', field.input);
+
         fieldset = this.add({
 			xtype: 'fieldset',
 			border: false,
 			autoHeight: true,
 			defaultType: 'radio',
 			style: 'margin-bottom: 5px; margin-top: 0; padding-bottom: 5px; padding-top: 0;',
-			width: 240,
+			width: 280,
             labelWidth: 1
 		});
 
@@ -130,7 +146,7 @@ PreferencePage = Ext.extend(Ext.Panel, {
 			autoHeight: true,
 			defaultType: 'radio',
 			style: 'margin-left: 24px; margin-bottom: 5px; margin-top: 0; padding-bottom: 5px; padding-top: 0;',
-			width: 240,
+			width: 280,
             labelWidth: 1
 		});
 
@@ -164,12 +180,12 @@ PreferencePage = Ext.extend(Ext.Panel, {
 
         om.bind('ssl_priv_key_path', fieldset.add({
             name: 'ssl_priv_key_path',
-            fieldLabel: 'Private key file path'
+            fieldLabel: 'Private key file path',
         }));
 
         om.bind('ssl_cert_path', fieldset.add({
             name: 'ssl_cert_path',
-            fieldLabel: 'Certificate and chains file path'
+            fieldLabel: 'Certificate and chains file path',
         }));
 
         fieldset = this.add({
@@ -178,10 +194,12 @@ PreferencePage = Ext.extend(Ext.Panel, {
             title: 'Advanced settings',
             style: 'margin-bottom: 0px; padding-bottom: 0px; padding-top: 5px',
             autoHeight: true,
-            labelWidth: 1,
+            labelAlign: 'top',
+            labelWidth: 150,
+            width: 280,
             defaultType: 'textfield',
             defaults: {
-                width: 180,
+                width: 260,
             }
         });
 
@@ -189,7 +207,8 @@ PreferencePage = Ext.extend(Ext.Panel, {
             xtype: 'checkbox',
             name: 'allow_remote',
             boxLabel: 'Allow remote control',
-            style: 'margin-left: 12px;'
+            style: 'margin-left: 12px;',
+            width: 150
         }));
 
         fieldset = this.add({
@@ -197,22 +216,23 @@ PreferencePage = Ext.extend(Ext.Panel, {
             border: false,
             style: 'margin-bottom: 0px; padding-bottom: 0px; padding-top: 5px',
             autoHeight: true,
-            labelWidth: 110,
+            labelAlign: 'top',
+            labelWidth: 150,
+            width: 260,
             defaultType: 'textfield',
             defaults: {
-                width: 180,
+                width: 240,
             }
         });
 
-        om.bind('remote_username', fieldset.add({
-            xtype: 'textfield',
-            name: 'remote_username',
-            fieldLabel: 'Remote control username'
-        }));
+        // om.bind('remote_username', fieldset.add({
+        //     xtype: 'textfield',
+        //     name: 'remote_username',
+        //     fieldLabel: 'Remote control username'
+        // }));
 
         om.bind('remote_password', fieldset.add({
             xtype: 'textfield',
-            inputType: 'password',
             name: 'remote_password',
             fieldLabel: 'Remote control password'
         }));
@@ -233,7 +253,7 @@ PreferencePage = Ext.extend(Ext.Panel, {
             labelWidth: 1,
             defaultType: 'textfield',
             defaults: {
-                width: 180,
+                width: 200,
             }
         });
 
@@ -308,7 +328,7 @@ PreferencePage = Ext.extend(Ext.Panel, {
         var apiUrl = 'http';
         if (optionsManager.get('use_ssl'))
             apiUrl += 's';
-        apiUrl += '://' + optionsManager.get('ip') + ':' + optionsManager.get('port') + '/streaming/stream';
+        apiUrl += '://' + optionsManager.get('remote_username') + ':' + optionsManager.get('remote_password') + '@' + optionsManager.get('ip') + ':' + optionsManager.get('port') + '/streaming/stream';
         Ext.getCmp('remote_url').setValue(apiUrl);
     }
 });

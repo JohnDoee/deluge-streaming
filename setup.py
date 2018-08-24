@@ -37,12 +37,12 @@
 #    statement from all source files in the program, then also delete it here.
 #
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 __plugin_name__ = "Streaming"
 __author__ = "Anders Jensen"
 __author_email__ = "johndoee@tidalstream.org"
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 __url__ = "https://github.com/JohnDoee/deluge-streaming"
 __license__ = "GPLv3"
 __description__ = "Enables streaming of files while downloading them."
@@ -64,6 +64,18 @@ downloads ahead, this enables seeking in video files.
 If you want to stream from a non-local computer, e.g. your seedbox, you will need to change the IP in option to the external server ip."""
 __pkg_data__ = {__plugin_name__.lower(): ["template/*", "data/*"]}
 
+REQUIREMENTS_PACKAGES = [
+    'thomas',
+    'lepl',
+    'pytz',
+]
+
+REQUIREMENTS_MODULES = [
+    'six',
+    'rarfile',
+    'rfc6266',
+]
+
 setup(
     name=__plugin_name__,
     version=__version__,
@@ -73,8 +85,10 @@ setup(
     url=__url__,
     license=__license__,
     long_description=__long_description__ if __long_description__ else __description__,
+    # install_requires=REQUIREMENTS_PACKAGES,
 
-    packages=[__plugin_name__.lower()],
+    packages=[__plugin_name__.lower()] + ['%s.%s' % (x, y) for x in REQUIREMENTS_PACKAGES for y in find_packages(x)] + REQUIREMENTS_PACKAGES,
+    py_modules=REQUIREMENTS_MODULES,
     package_data = __pkg_data__,
 
     entry_points="""
