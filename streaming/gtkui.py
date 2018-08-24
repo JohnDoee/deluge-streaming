@@ -142,9 +142,11 @@ class GtkUI(GtkPluginBase):
             "auto_open_stream_urls": self.glade.get_widget("input_auto_open_stream_urls").get_active(),
             "allow_remote": self.glade.get_widget("input_allow_remote").get_active(),
             "download_only_streamed": self.glade.get_widget("input_download_only_streamed").get_active(),
+            "reverse_proxy_enabled": self.glade.get_widget("input_reverse_proxy_enabled").get_active(),
             # "download_in_order": self.glade.get_widget("input_download_in_order").get_active(),
             "use_ssl": self.glade.get_widget("input_use_ssl").get_active(),
             # "remote_username": self.glade.get_widget("input_remote_username").get_text(),
+            "reverse_proxy_base_url": self.glade.get_widget("input_reverse_proxy_base_url").get_text(),
             "remote_password": self.glade.get_widget("input_remote_password").get_text(),
             "ssl_priv_key_path": self.glade.get_widget("input_ssl_priv_key_path").get_text(),
             "ssl_cert_path": self.glade.get_widget("input_ssl_cert_path").get_text(),
@@ -175,9 +177,11 @@ class GtkUI(GtkPluginBase):
         self.glade.get_widget("input_allow_remote").set_active(config["allow_remote"])
         self.glade.get_widget("input_use_ssl").set_active(config["use_ssl"])
         self.glade.get_widget("input_download_only_streamed").set_active(config["download_only_streamed"])
+        self.glade.get_widget("input_reverse_proxy_enabled").set_active(config["reverse_proxy_enabled"])
         # self.glade.get_widget("input_download_in_order").set_active(config["download_in_order"])
         # self.glade.get_widget("input_download_everything").set_active(not config["download_in_order"] and not config["download_only_streamed"])
         # self.glade.get_widget("input_remote_username").set_text(config["remote_username"])
+        self.glade.get_widget("input_reverse_proxy_base_url").set_text(config["reverse_proxy_base_url"])
         self.glade.get_widget("input_remote_password").set_text(config["remote_password"])
         self.glade.get_widget("input_ssl_priv_key_path").set_text(config["ssl_priv_key_path"])
         self.glade.get_widget("input_ssl_cert_path").set_text(config["ssl_cert_path"])

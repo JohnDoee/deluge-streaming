@@ -81,6 +81,8 @@ DEFAULT_PREFS = {
     'use_ssl': False,
     'remote_username': 'stream',
     'remote_password': ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(16)),
+    'reverse_proxy_enabled': False,
+    'reverse_proxy_base_url': '',
     'serve_method': 'standalone',
     'ssl_source': 'daemon',
     'ssl_priv_key_path': '',
@@ -675,11 +677,16 @@ class Core(CorePluginBase):
         else:
             raise NotImplementedError()
 
-        self.base_url += '://'
-        if ':' in ip:
-            self.base_url += ip
+        if self.config['reverse_proxy_enabled'] and self.config['reverse_proxy_base_url']:
+            self.base_url = self.config['reverse_proxy_base_url']
         else:
-            self.base_url += '%s:%s' % (ip, port)
+            self.base_url += '://'
+            if ':' in ip:
+                self.base_url += ip
+            else:
+                self.base_url += '%s:%s' % (ip, port)
+
+        self.base_url = self.base_url.rstrip('/')
 
     @defer.inlineCallbacks
     def disable(self):
