@@ -182,7 +182,7 @@ class Torrent(object):
             logger.debug('Calling read again to get the real number')
             return self.can_read(from_byte)
         else:
-            return ((last_available_piece - needed_piece) * self.piece_length) + rest + self.piece_length
+            return ((last_available_piece - needed_piece) * self.piece_length) + self.piece_length - rest
 
     def is_idle(self):
         return not self.readers and self.last_activity + TORRENT_CLEANUP_INTERVAL < datetime.now()
