@@ -182,7 +182,7 @@ class Torrent(object):
             logger.debug('Calling read again to get the real number')
             return self.can_read(from_byte)
         else:
-            return ((last_available_piece - needed_piece) * self.piece_length) + rest + self.piece_length
+            return ((last_available_piece - needed_piece) * self.piece_length) + self.piece_length - rest
 
     def is_idle(self):
         return not self.readers and self.last_activity + TORRENT_CLEANUP_INTERVAL < datetime.now()
@@ -391,8 +391,7 @@ class TorrentHandler(object):
 
     def get_filesystem(self, infohash):
         torrent = get_torrent(infohash)
-        status = torrent.get_status(['piece_length', 'files', 'file_progress', 'save_path'])
-        self.piece_length = status['piece_length']
+        status = torrent.get_status(['files', 'file_progress', 'save_path'])
         save_path = status['save_path']
 
         found_rar = False
@@ -456,8 +455,15 @@ class TorrentHandler(object):
     @defer.inlineCallbacks
     def stream(self, infohash, path, wait_for_end_pieces=False):
         logger.debug('Trying to get path:%s from infohash:%s' % (path, infohash))
-        local_torrent = self.get_torrent(infohash)
         torrent = get_torrent(infohash)
+
+        for _ in range(10):
+            status = torrent.get_status(['piece_length'])
+            if status['piece_length'] > 0:
+                break
+            yield sleep(0.2)
+
+        local_torrent = self.get_torrent(infohash)
 
         filesystem = self.get_filesystem(infohash)
         if path:

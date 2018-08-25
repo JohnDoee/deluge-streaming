@@ -50,6 +50,9 @@ class DelugeTorrentInput(InputBase.find_plugin('file')):
         if self.can_read_to <= tell or self.can_read_to is None:
             self.can_read_to = self.torrent.can_read(self.offset + tell) + tell
 
+            if self._open_file:
+                self._open_file.seek(tell)
+
         real_num = min(num, self.can_read_to - tell)
         if num != real_num:
             logger.info('The real number we can read to is %s and not %s at position %s' % (real_num, num, tell))

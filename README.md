@@ -51,6 +51,10 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 
 # Version Info
 
+## Version 0.10.2
+* Busting cache when waiting for piece
+* Math error in calculating size of readable bytes
+
 ## Version 0.10.1
 * Small bugfixes related to priorities, should actually make sequential download work.
 
