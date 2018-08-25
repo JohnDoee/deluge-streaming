@@ -166,7 +166,7 @@ class Torrent(object):
             f = self.get_file_from_offset(from_byte)
             logger.debug('Also setting file to max %r' % (f, ))
             file_priorities = self.torrent.get_file_priorities()
-            file_priorities[f['index']] = 7
+            file_priorities[f['index']] = 2
             self.torrent.set_file_priorities(file_priorities)
 
             for _ in range(300):
@@ -239,7 +239,7 @@ class Torrent(object):
 
                 if f['path'] in must_whitelist:
                     if f['path'] in first_files:
-                        file_priorities[i] = 7
+                        file_priorities[i] = 2
                     else:
                         file_priorities[i] = 1
                 elif f['path'] not in cannot_blacklist:
@@ -307,7 +307,7 @@ class Torrent(object):
                     if i < first_file:
                         file_priorities[index] = 0
                     elif i == first_file:
-                        file_priorities[index] = 7
+                        file_priorities[index] = 2
                     else:
                         file_priorities[index] = 1
 
