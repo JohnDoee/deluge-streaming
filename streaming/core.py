@@ -70,6 +70,7 @@ VIDEO_STREAMABLE_EXTENSIONS = ['mkv', 'mp4', 'iso', 'ogg', 'ogm', 'm4v']
 AUDIO_STREAMABLE_EXTENSIONS = ['flac', 'mp3', 'oga']
 STREAMABLE_EXTENSIONS = set(VIDEO_STREAMABLE_EXTENSIONS + AUDIO_STREAMABLE_EXTENSIONS)
 TORRENT_CLEANUP_INTERVAL = timedelta(minutes=30)
+MAX_FILE_PRIORITY = 2
 
 DEFAULT_PREFS = {
     'ip': '127.0.0.1',
@@ -164,10 +165,12 @@ class Torrent(object):
             self.torrent.handle.piece_priority(needed_piece, 7)
 
             f = self.get_file_from_offset(from_byte)
-            logger.debug('Also setting file to max %r' % (f, ))
+
             file_priorities = self.torrent.get_file_priorities()
-            file_priorities[f['index']] = 7
-            self.torrent.set_file_priorities(file_priorities)
+            if file_priorities[f['index']] != MAX_FILE_PRIORITY:
+                logger.debug('Also setting file to max %r' % (f, ))
+                file_priorities[f['index']] = MAX_FILE_PRIORITY
+                self.torrent.set_file_priorities(file_priorities)
 
             for _ in range(300):
                 if self.torrent.status.pieces[needed_piece]:
@@ -239,7 +242,7 @@ class Torrent(object):
 
                 if f['path'] in must_whitelist:
                     if f['path'] in first_files:
-                        file_priorities[i] = 7
+                        file_priorities[i] = MAX_FILE_PRIORITY
                     else:
                         file_priorities[i] = 1
                 elif f['path'] not in cannot_blacklist:
@@ -264,6 +267,23 @@ class Torrent(object):
                             fileset_ranges[fileset_hash] = min(fileset_ranges[fileset_hash], fileset['files'].index(path))
                         else:
                             fileset_ranges[fileset_hash] = fileset['files'].index(path)
+
+            file_priorities = self.torrent.get_file_priorities()
+            logger.debug('Fileset heads: %r' % (fileset_ranges, ))
+            for fileset_hash, first_file in fileset_ranges.items():
+                fileset = self.filesets[fileset_hash]
+                logger.debug('From index %s' % (first_file, ))
+                file_mapping = {f['path']: f['index'] for f in status['files']}
+                for i, f in enumerate(fileset['files']):
+                    index = file_mapping[f]
+                    if i < first_file:
+                        file_priorities[index] = 0
+                    elif i == first_file:
+                        file_priorities[index] = MAX_FILE_PRIORITY
+                    else:
+                        file_priorities[index] = 1
+
+            self.torrent.set_file_priorities(file_priorities)
 
             currently_downloading = self.get_currently_downloading()
             logger.debug('File heads: %r' % (file_ranges, ))
@@ -295,23 +315,6 @@ class Torrent(object):
                         self.torrent.handle.piece_priority(piece, 7)
                     else:
                         self.torrent.handle.piece_priority(piece, 1)
-
-            file_priorities = self.torrent.get_file_priorities()
-            logger.debug('Fileset heads: %r' % (fileset_ranges, ))
-            for fileset_hash, first_file in fileset_ranges.items():
-                fileset = self.filesets[fileset_hash]
-                logger.debug('From index %s' % (first_file, ))
-                file_mapping = {f['path']: f['index'] for f in status['files']}
-                for i, f in enumerate(fileset['files']):
-                    index = file_mapping[f]
-                    if i < first_file:
-                        file_priorities[index] = 0
-                    elif i == first_file:
-                        file_priorities[index] = 7
-                    else:
-                        file_priorities[index] = 1
-
-            self.torrent.set_file_priorities(file_priorities)
 
     def get_currently_downloading(self):
         currently_downloading = set()
