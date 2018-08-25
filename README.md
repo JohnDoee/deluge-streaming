@@ -51,6 +51,9 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 
 # Version Info
 
+## Version 0.10.1
+* Small bugfixes related to priorities, should actually make sequential download work.
+
 ## Version 0.10.0
 * Rewrote large parts of the code
 * Now using [thomas](https://github.com/JohnDoee/thomas) as file-reading core - this adds support for multi-rar streaming.
