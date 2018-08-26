@@ -468,6 +468,8 @@ class TorrentHandler(object):
         filesystem = self.get_filesystem(infohash)
         if path:
             stream_item = filesystem.get_item_from_path(path)
+            if filesystem == stream_item:
+                stream_item = filesystem.get_item_from_path('%s/%s' % (filesystem.id, path))
         else:
             stream_item = filesystem
 
