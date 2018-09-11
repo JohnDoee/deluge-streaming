@@ -38,7 +38,7 @@ By using a small tool it is possible to it's possible to open streams directly i
 ## Motivation
 
 The plugin is not meant to be used as a right-click to stream thing. The idea is to
-make Deluge an abstraction layer for the [TidalStream](http://www.tidalstream.org/) project, i.e. torrents to http on demand.
+make Deluge an abstraction layer for the [Tidalstream](http://www.tidalstream.org/) project, i.e. torrents to http on demand.
 
 The _allow remote_ option is to allow remote add and stream of torrents.
 
@@ -50,6 +50,11 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 * [x] Reverse proxy improvement (e.g. port different than bind port)
 
 # Version Info
+
+## Version Unreleased
+* Added label support
+* Reverse proxy config / replace URL config
+* Ensure internal Deluge state is updated before trying to use it
 
 ## Version 0.10.2
 * Busting cache when waiting for piece

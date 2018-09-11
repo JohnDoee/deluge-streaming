@@ -152,6 +152,7 @@ class Torrent(object):
     def can_read(self, from_byte):
         self.ensure_started()
 
+        status = self.torrent.get_status(['pieces'])
         needed_piece, rest = divmod(from_byte, self.piece_length)
         last_available_piece = None
         for piece, status in enumerate(self.torrent.status.pieces[needed_piece:], needed_piece):
@@ -178,6 +179,7 @@ class Torrent(object):
                 if not reactor.running:
                     return
                 time.sleep(0.2)
+                status = self.torrent.get_status(['pieces'])
 
             logger.debug('Calling read again to get the real number')
             return self.can_read(from_byte)
@@ -251,7 +253,7 @@ class Torrent(object):
             self.torrent.set_file_priorities(file_priorities)
 
         if self.readers:
-            status = self.torrent.get_status(['files', 'file_progress'])
+            status = self.torrent.get_status(['files', 'file_progress', 'pieces'])
             file_ranges = {}
             fileset_ranges = {}
             for path, from_byte, to_byte in self.readers.values():
@@ -325,6 +327,7 @@ class Torrent(object):
         return currently_downloading
 
     def reset_priorities(self):
+        status = self.torrent.get_status(['pieces'])
         for piece in range(len(self.torrent.status.pieces)):
             self.torrent.handle.piece_priority(piece, 1)
 
@@ -468,6 +471,8 @@ class TorrentHandler(object):
         filesystem = self.get_filesystem(infohash)
         if path:
             stream_item = filesystem.get_item_from_path(path)
+            if stream_item and filesystem == stream_item and path != stream_item.id:
+                stream_item = filesystem.get_item_from_path('%s/%s' % (filesystem.id, path))
         else:
             stream_item = filesystem
 
@@ -523,6 +528,7 @@ class TorrentHandler(object):
                 torrent.handle.piece_priority(piece, 7)
 
             for _ in range(220):
+                status = torrent.get_status(['pieces'])
                 for piece in wait_for_pieces:
                     if not torrent.status.pieces[piece]:
                         break
@@ -572,6 +578,7 @@ class StreamResource(Resource):
         infohash = request.args.get('infohash')
         path = request.args.get('path')
         wait_for_end_pieces = bool(request.args.get('wait_for_end_pieces'))
+        label = request.args.get('label')
 
         if path:
             path = path[0]
@@ -583,11 +590,16 @@ class StreamResource(Resource):
         else:
             infohash = infohash
 
+        if label:
+            label = label[0]
+        else:
+            label = None
+
         payload = request.content.read()
         if not payload:
             defer.returnValue(json.dumps({'status': 'error', 'message': 'invalid torrent'}))
 
-        result = yield self.client.stream_torrent(infohash=infohash, filedump=payload, filepath_or_index=path, wait_for_end_pieces=wait_for_end_pieces)
+        result = yield self.client.stream_torrent(infohash=infohash, filedump=payload, filepath_or_index=path, wait_for_end_pieces=wait_for_end_pieces, label=label)
         defer.returnValue(json.dumps(result))
 
     @defer.inlineCallbacks
@@ -761,7 +773,7 @@ class Core(CorePluginBase):
 
     @export
     @defer.inlineCallbacks
-    def stream_torrent(self, infohash=None, url=None, filedump=None, filepath_or_index=None, includes_name=False, wait_for_end_pieces=False):
+    def stream_torrent(self, infohash=None, url=None, filedump=None, filepath_or_index=None, includes_name=False, wait_for_end_pieces=False, label=None):
         logger.debug('Trying to stream infohash:%s, url:%s, filepath_or_index:%s' % (infohash, url, filepath_or_index))
         torrent = get_torrent(infohash)
 
@@ -780,6 +792,15 @@ class Core(CorePluginBase):
             core = component.get("Core")
             try:
                 yield core.add_torrent_file('file.torrent', filedump.encode('base64'), {'add_paused': True})
+                if label and 'Label' in component.get('CorePluginManager').get_enabled_plugins():
+                    label_plugin = component.get('CorePlugin.Label')
+                    if label not in label_plugin.get_labels():
+                        label_plugin.add(label)
+
+                    try:
+                        label_plugin.set_torrent(infohash, label)
+                    except:
+                        logger.exception('Failed to set label')
             except:
                 logger.exception('Failed to add torrent')
                 defer.returnValue({'status': 'error', 'message': 'failed to add torrent'})
