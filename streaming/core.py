@@ -152,6 +152,7 @@ class Torrent(object):
     def can_read(self, from_byte):
         self.ensure_started()
 
+        status = self.torrent.get_status(['pieces'])
         needed_piece, rest = divmod(from_byte, self.piece_length)
         last_available_piece = None
         for piece, status in enumerate(self.torrent.status.pieces[needed_piece:], needed_piece):
@@ -178,6 +179,7 @@ class Torrent(object):
                 if not reactor.running:
                     return
                 time.sleep(0.2)
+                status = self.torrent.get_status(['pieces'])
 
             logger.debug('Calling read again to get the real number')
             return self.can_read(from_byte)
@@ -251,7 +253,7 @@ class Torrent(object):
             self.torrent.set_file_priorities(file_priorities)
 
         if self.readers:
-            status = self.torrent.get_status(['files', 'file_progress'])
+            status = self.torrent.get_status(['files', 'file_progress', 'pieces'])
             file_ranges = {}
             fileset_ranges = {}
             for path, from_byte, to_byte in self.readers.values():
@@ -325,6 +327,7 @@ class Torrent(object):
         return currently_downloading
 
     def reset_priorities(self):
+        status = self.torrent.get_status(['pieces'])
         for piece in range(len(self.torrent.status.pieces)):
             self.torrent.handle.piece_priority(piece, 1)
 
@@ -525,6 +528,7 @@ class TorrentHandler(object):
                 torrent.handle.piece_priority(piece, 7)
 
             for _ in range(220):
+                status = torrent.get_status(['pieces'])
                 for piece in wait_for_pieces:
                     if not torrent.status.pieces[piece]:
                         break
