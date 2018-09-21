@@ -71,6 +71,12 @@ AUDIO_STREAMABLE_EXTENSIONS = ['flac', 'mp3', 'oga']
 STREAMABLE_EXTENSIONS = set(VIDEO_STREAMABLE_EXTENSIONS + AUDIO_STREAMABLE_EXTENSIONS)
 TORRENT_CLEANUP_INTERVAL = timedelta(minutes=30)
 MAX_FILE_PRIORITY = 2
+MAX_PIECE_PRIORITY = 7
+MIN_WAIT_PIECE_PRIORITY_DELAY = timedelta(seconds=5)
+WITHIN_CHAIN_PERCENTAGE = 0.10
+MIN_PIECE_COUNT_FOR_CHAIN_CONSIDERATION = 40
+MIN_CHAIN_WAIT_DELAY = timedelta(seconds=8)
+
 
 DEFAULT_PREFS = {
     'ip': '127.0.0.1',
@@ -128,6 +134,7 @@ class Torrent(object):
         self.readers = {}
         self.cycle_lock = defer.DeferredLock()
         self.last_activity = datetime.now()
+        self.waited_pieces = set()
 
         self.torrent = get_torrent(infohash)
         status = self.torrent.get_status(['piece_length'])
@@ -161,11 +168,30 @@ class Torrent(object):
             last_available_piece = piece
 
         if last_available_piece is None:
-            logger.debug('Since we are waiting for a piece, setting priority for %s to max' % (needed_piece, ))
-            self.torrent.handle.set_piece_deadline(needed_piece, 0)
-            self.torrent.handle.piece_priority(needed_piece, 7)
+            logger.debug('Since we are waiting for a piece, we need to check if we should set piece %s to max' % (needed_piece, ))
 
+            is_next_in_chain = False
             f = self.get_file_from_offset(from_byte)
+            file_piece_count = (f['size'] // self.piece_length) + 1
+
+            if file_piece_count <= MIN_PIECE_COUNT_FOR_CHAIN_CONSIDERATION:
+                is_next_in_chain = True
+            else:
+                best_reader_from_byte = max(reader[1] for reader in self.readers.values() if reader[1] <= from_byte)
+                best_reader_piece = best_reader_from_byte // self.piece_length
+                downloading_pieces = self.get_currently_downloading()
+                for unfinished_piece, status in enumerate(self.torrent.status.pieces[best_reader_piece:], best_reader_piece):
+                    if not status and unfinished_piece not in downloading_pieces:
+                        break
+
+                piece_diff = best_reader_piece - unfinished_piece - 1
+                if unfinished_piece >= best_reader_piece or piece_diff / file_piece_count <= WITHIN_CHAIN_PERCENTAGE:
+                    is_next_in_chain = True
+
+            if not is_next_in_chain:
+                logger.debug('Not a next-in-chain piece, setting priority now')
+                self.torrent.handle.set_piece_deadline(needed_piece, 0)
+                self.torrent.handle.piece_priority(needed_piece, MAX_PIECE_PRIORITY)
 
             file_priorities = self.torrent.get_file_priorities()
             if file_priorities[f['index']] != MAX_FILE_PRIORITY:
@@ -173,11 +199,18 @@ class Torrent(object):
                 file_priorities[f['index']] = MAX_FILE_PRIORITY
                 self.torrent.set_file_priorities(file_priorities)
 
-            for _ in range(300):
+            for i in range(300):
                 if self.torrent.status.pieces[needed_piece]:
                     break
+
                 if not reactor.running:
                     return
+
+                if is_next_in_chain and i == MIN_CHAIN_WAIT_DELAY.total_seconds() * 5 and needed_piece not in self.get_currently_downloading():
+                    logger.debug('Next in chain waiting failed, setting priority')
+                    self.torrent.handle.set_piece_deadline(needed_piece, 0)
+                    self.torrent.handle.piece_priority(needed_piece, MAX_PIECE_PRIORITY)
+
                 time.sleep(0.2)
                 status = self.torrent.get_status(['pieces'])
 
@@ -263,6 +296,10 @@ class Torrent(object):
                 else:
                     file_ranges[path] = from_byte
 
+                reader_piece = from_byte // self.piece_length
+                self.torrent.handle.set_piece_deadline(reader_piece, 0)
+                self.torrent.handle.piece_priority(reader_piece, MAX_PIECE_PRIORITY)
+
                 for fileset_hash, fileset in self.filesets.items():
                     if path in fileset['files']:
                         if fileset_hash in fileset_ranges:
@@ -313,8 +350,6 @@ class Torrent(object):
 
                     if piece < current_piece:
                         self.torrent.handle.piece_priority(piece, 0)
-                    elif piece == current_piece:
-                        self.torrent.handle.piece_priority(piece, 7)
                     else:
                         self.torrent.handle.piece_priority(piece, 1)
 
@@ -523,9 +558,10 @@ class TorrentHandler(object):
                         wait_for_pieces.append(piece - 1)
 
             logger.debug('We want first and last piece first, these are the pieces: %r' % (wait_for_pieces, ))
-            for piece in wait_for_pieces:
-                torrent.handle.set_piece_deadline(piece, 0)
-                torrent.handle.piece_priority(piece, 7)
+            if wait_for_pieces:
+                for piece in wait_for_pieces:
+                    torrent.handle.set_piece_deadline(piece, 0)
+                    torrent.handle.piece_priority(piece, MAX_PIECE_PRIORITY)
 
             for _ in range(220):
                 status = torrent.get_status(['pieces'])

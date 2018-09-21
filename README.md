@@ -48,10 +48,64 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 * [ ] Better feedback in interface about streams
 * [ ] Better feedback when using API
 * [x] Reverse proxy improvement (e.g. port different than bind port)
+* [ ] Fix problems when removing torrent from Deluge (sea of errors)
+
+# HTTP API Usage
+
+## Prerequisite
+
+Install and enable the plugin. Afterwards, head into Streaming settings and enable "Allow remote control".
+The URL found in the "Remote control url" field is where the API can be reached. The auth used is Basic Auth.
+
+## Usage
+
+There is only one end-point and that is where a torrent stream can be requested.
+
+Both return the same responses and all responses are JSON encoded.
+All successfully authenticated responses have status code 200.
+
+## POST /streaming/stream
+
+POST body must be the raw torrent you want to stream. No form formatting or anything can be used.
+
+List of URL GET Arguments
+
+* **path**: Path inside the torrent file to either a folder or a file you want to stream. The plugin will try to guess the best one. **Optional**. **Default**: '' (i.e. find the best file in the whole torrent)
+* **infohash**: Infohash of the torrent you want to stream, can make it a bit faster as it can avoid reading POST body. **Optional**.
+* **label**: If label plugin is enabled and the torrent is actually added then give the torrent this label. **Optional**. **Default**: ''
+* **wait_for_end_pieces**: Wait for the first and last piece in the streamed file to be fully downloaded. Can be necessary for some video players. It also enforces that the torrent can be actually downloaded. If the key exist with any (even empty) value, the feature is enabled. **Optional**. **Default**: false
+
+## GET /streaming/stream
+
+* **infohash**: Does the same as when POSTed. **Mandatory**.
+* **path**: Does the same as when POSTed. **Optional**.
+* **wait_for_end_pieces**: Does the same as when POSTed. **Optional**.
+
+## Success Response
+
+```json
+{
+    "status": "success", # Always equals this
+    "filename" "horse.mkv", # Filename of the streamed torrent
+    "url": "http://example.com/" # URL where the file can be reached by e.g. a media player
+}
+```
+
+## Error Response
+
+```json
+{
+    "status": "error", # Always equals this
+    "message" "Torrent failed" # description for why it failed
+}
+```
 
 # Version Info
 
-## Version Unreleased
+## Version 0.10.4
+* Trying to set max priority less as it destroys performance
+
+## Version 0.10.3
 * Added label support
 * Reverse proxy config / replace URL config
 * Ensure internal Deluge state is updated before trying to use it
