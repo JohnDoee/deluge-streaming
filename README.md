@@ -48,6 +48,7 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 * [ ] Better feedback in interface about streams
 * [ ] Better feedback when using API
 * [x] Reverse proxy improvement (e.g. port different than bind port)
+* [ ] Fix problems when removing torrent from Deluge (sea of errors)
 
 # HTTP API Usage
 
@@ -101,7 +102,10 @@ List of URL GET Arguments
 
 # Version Info
 
-## Version Unreleased
+## Version 0.10.4
+* Trying to set max priority less as it destroys performance
+
+## Version 0.10.3
 * Added label support
 * Reverse proxy config / replace URL config
 * Ensure internal Deluge state is updated before trying to use it
