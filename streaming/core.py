@@ -180,6 +180,7 @@ class Torrent(object):
                 best_reader_from_byte = max(reader[1] for reader in self.readers.values() if reader[1] <= from_byte)
                 best_reader_piece = best_reader_from_byte // self.piece_length
                 downloading_pieces = self.get_currently_downloading()
+                # TODO: unfinished_piece can be None
                 for unfinished_piece, status in enumerate(self.torrent.status.pieces[best_reader_piece:], best_reader_piece):
                     if not status and unfinished_piece not in downloading_pieces:
                         break
@@ -809,7 +810,7 @@ class Core(CorePluginBase):
 
     @export
     @defer.inlineCallbacks
-    def stream_torrent(self, infohash=None, url=None, filedump=None, filepath_or_index=None, includes_name=False, wait_for_end_pieces=False, label=None):
+    def stream_torrent(self, infohash=None, url=None, filedump=None, filepath_or_index=None, includes_name=False, wait_for_end_pieces=False, label=None, as_inline=False):
         logger.debug('Trying to stream infohash:%s, url:%s, filepath_or_index:%s' % (infohash, url, filepath_or_index))
         torrent = get_torrent(infohash)
 
@@ -851,7 +852,7 @@ class Core(CorePluginBase):
 
         try:
             stream_or_item = yield defer.maybeDeferred(self.torrent_handler.stream, infohash, fn, wait_for_end_pieces=wait_for_end_pieces)
-            stream_url = self.thomas_http_output.serve_item(stream_or_item)
+            stream_url = self.thomas_http_output.serve_item(stream_or_item, as_inline=as_inline)
         except:
             logger.exception('Failed to stream torrent')
             defer.returnValue({'status': 'error', 'message': 'failed to stream torrent'})
