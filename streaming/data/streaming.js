@@ -349,20 +349,23 @@ StreamingPlugin = Ext.extend(Deluge.Plugin, {
         deluge.preferences.addPage(this.prefsPage);
 
         console.log('Streaming plugin loaded');
-        var doStream = function (tid, fileIndex) {
-            deluge.client.streaming.stream_torrent(tid, null, null, fileIndex, true, {
+        var doStream = function (tid, fileIndex, asInline) {
+            deluge.client.streaming.stream_torrent(tid, null, null, fileIndex, true, false, null, asInline, {
                 success: function (result) {
-                    console.log('Got result', result);
                     if (result.status == 'success') {
-                        var url = result.url;
-                        if (result.use_stream_urls) {
-                            url = 'stream+' + url;
-                            if (result.auto_open_stream_urls) {
-                                window.location.assign(url);
-                                return;
+                        if (asInline) {
+                            window.open(result.url, '_blank');
+                        } else {
+                            var url = result.url;
+                            if (result.use_stream_urls) {
+                                url = 'stream+' + url;
+                                if (result.auto_open_stream_urls) {
+                                    window.location.assign(url);
+                                    return;
+                                }
                             }
+                            Ext.Msg.alert('Stream ready', 'URL for stream: <a target="_blank" href="' + url + '">' + url + '</a>');
                         }
-                        Ext.Msg.alert('Stream ready', 'URL for stream: <a target="_blank" href="' + url + '">' + url + '</a>');
                     } else {
                         Ext.Msg.alert('Stream failed', 'Error message: ' + result.message);
                     }
@@ -370,6 +373,28 @@ StreamingPlugin = Ext.extend(Deluge.Plugin, {
             })
         }
 
+        var triggerStreamFile = function (asInline) {
+            var files = deluge.details.items.items[2];
+            var nodes = files.getSelectionModel().getSelectedNodes();
+            if (nodes) {
+                var fileIndex = nodes[0].attributes.fileIndex;
+                var tid = files.torrentId;
+                if (fileIndex >= 0) {
+                    doStream(tid, fileIndex, asInline);
+                }
+            }
+        }
+
+        deluge.menus.filePriorities.addMenuItem({
+            id: 'playthis',
+            text: 'Play in browser',
+            iconCls: 'icon-resume',
+            handler: function (item, event) {
+                deluge.menus.filePriorities.hide();
+                triggerStreamFile(true);
+                return false;
+            }
+        });
 
         deluge.menus.filePriorities.addMenuItem({
             id: 'streamthis',
@@ -377,15 +402,26 @@ StreamingPlugin = Ext.extend(Deluge.Plugin, {
             iconCls: 'icon-down',
             handler: function (item, event) {
                 deluge.menus.filePriorities.hide();
-                var files = deluge.details.items.items[2];
-                var nodes = files.getSelectionModel().getSelectedNodes();
-                if (nodes) {
-                    var fileIndex = nodes[0].attributes.fileIndex;
-                    var tid = files.torrentId;
-                    if (fileIndex >= 0) {
-                        doStream(tid, fileIndex);
-                    }
-                }
+                triggerStreamFile(false);
+                return false;
+            }
+        });
+
+
+        var triggerStreamTorrent = function (asInline) {
+            var ids = deluge.torrents.getSelectedIds();
+            if (ids) {
+                doStream(ids[0], null, asInline);
+            }
+        }
+
+        deluge.menus.torrent.addMenuItem({
+            id: 'playthistorrent',
+            text: 'Play in browser',
+            iconCls: 'icon-resume',
+            handler: function (item, event) {
+                deluge.menus.torrent.hide();
+                triggerStreamTorrent(true);
                 return false;
             }
         });
@@ -396,10 +432,7 @@ StreamingPlugin = Ext.extend(Deluge.Plugin, {
             iconCls: 'icon-down',
             handler: function (item, event) {
                 deluge.menus.torrent.hide();
-                var ids = deluge.torrents.getSelectedIds();
-                if (ids) {
-                    doStream(ids[0]);
-                }
+                triggerStreamTorrent(false);
                 return false;
             }
         });
