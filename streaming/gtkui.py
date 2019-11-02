@@ -63,7 +63,7 @@ def execute_url(url):
         try:
             subprocess.Popen(['xdg-open', url])
         except OSError:
-            print 'Unable to open URL %s' % (url, )
+            print('Unable to open URL %s' % (url, ))
 
 
 class GtkUI(GtkPluginBase):

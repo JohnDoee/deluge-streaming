@@ -24,7 +24,7 @@ _trial_temp
 *.komodoproject
 docs/_build*
 .env*
-
+EGG-INFO
 
 # for bundling
 thomas

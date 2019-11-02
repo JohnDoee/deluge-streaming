@@ -45,9 +45,9 @@ class DelugeTorrentInput(InputBase.find_plugin('file')):
         if not self._open_file:
             self.seek(0)
 
-        #logger.debug('Trying to read %s from %i torrentfile_id %r' % (self.path, self.tell(), id(self)))
+        logger.debug('Trying to read %s from %i torrentfile_id %r' % (self.path, self.tell(), id(self)))
         tell = self.tell()
-        if self.can_read_to <= tell or self.can_read_to is None:
+        if self.can_read_to is None or self.can_read_to <= tell:
             self.can_read_to = self.torrent.can_read(self.offset + tell) + tell
 
             if self._open_file:

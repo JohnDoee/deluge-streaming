@@ -36,14 +36,20 @@
 #    this exception statement from your version. If you delete this exception
 #    statement from all source files in the program, then also delete it here.
 #
+import logging
 
-from deluge.log import LOG as log
-from deluge.ui.client import client
-from deluge import component
 from deluge.plugins.pluginbase import WebPluginBase
 
-from common import get_resource
+from .common import get_resource
+
+log = logging.getLogger(__name__)
 
 
 class WebUI(WebPluginBase):
     scripts = [get_resource("streaming.js")]
+
+    def enable(self):
+        pass
+
+    def disable(self):
+        pass
