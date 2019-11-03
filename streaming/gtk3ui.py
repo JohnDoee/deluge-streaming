@@ -43,7 +43,7 @@ import sys
 import subprocess
 
 from gi.repository import Gtk
-from gi.repository.Gtk import Menu, MenuItem, SeparatorMenuItem
+from gi.repository.Gtk import MenuItem, SeparatorMenuItem
 
 import deluge.component as component
 from deluge.plugins.pluginbase import Gtk3PluginBase
@@ -224,7 +224,7 @@ class Gtk3UI(Gtk3PluginBase):
                     threads.deferToThread(execute_url, url)
                 else:
                     def on_dialog_callback(response):
-                        if response == gtk.RESPONSE_YES:
+                        if response == Gtk.ResponseType.YES:
                             threads.deferToThread(execute_url, url)
 
                     dialogs.YesNoDialog('Stream ready', 'Do you want to play the video?').run().addCallback(on_dialog_callback)

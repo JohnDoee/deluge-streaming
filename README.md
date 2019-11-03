@@ -1,7 +1,7 @@
 # Streaming Plugin
 https://github.com/JohnDoee/deluge-streaming
 
-(c)2016 by Anders Jensen <johndoee@tidalstream.org>
+(c)2019 by Anders Jensen <johndoee@tidalstream.org>
 
 ## Description
 
@@ -47,6 +47,13 @@ The _allow remote_ option is to allow remote add and stream of torrents.
 * [ ] Better feedback in interface about streams
 * [ ] Better feedback when using API
 * [ ] Fix problems when removing torrent from Deluge (sea of errors)
+
+# Important Deluge 2 information
+
+While developing the Deluge 2 version of this plugin I hit a few problems that might be visible for you too.
+
+* When shutting down Deluge an exception / error happens every time, this bug is reported.
+* Sometimes the Web UI does not load plugins correctly, try restarting Deluge and refresh your browser if this happens.
 
 # HTTP API Usage
 
@@ -99,6 +106,11 @@ List of URL GET Arguments
 ```
 
 # Version Info
+
+## Version 0.11.0
+* Initial support for Deluge 2 / Python 3
+* Added support for aggressive piece prioritization when it should not be necessary.
+* Fixed bug related to paused torrent with no data downloaded.
 
 ## Version 0.10.5
 * Added support for serving files inline
