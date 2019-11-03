@@ -42,7 +42,7 @@ from setuptools import setup, find_packages
 __plugin_name__ = "Streaming"
 __author__ = "Anders Jensen"
 __author_email__ = "johndoee@tidalstream.org"
-__version__ = "0.10.5"
+__version__ = "0.11.0"
 __url__ = "https://github.com/JohnDoee/deluge-streaming"
 __license__ = "GPLv3"
 __description__ = "Enables streaming of files while downloading them."
@@ -71,7 +71,6 @@ REQUIREMENTS_PACKAGES = [
 ]
 
 REQUIREMENTS_MODULES = [
-    'six',
     'rarfile',
     'rfc6266',
 ]
@@ -96,7 +95,9 @@ setup(
     %s = %s:CorePlugin
     [deluge.plugin.gtkui]
     %s = %s:GtkUIPlugin
+    [deluge.plugin.gtk3ui]
+    %s = %s:Gtk3UIPlugin
     [deluge.plugin.web]
     %s = %s:WebUIPlugin
-    """ % ((__plugin_name__, __plugin_name__.lower())*3)
+    """ % ((__plugin_name__, __plugin_name__.lower())*4)
 )

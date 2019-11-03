@@ -1,3 +1,5 @@
+import argparse
+
 import requests
 
 class FailedToStreamException(Exception):
@@ -44,6 +46,8 @@ def stream_torrent(remote_control_url, infohash=None, path=None, wait_for_end_pi
         data = r.json()
         if data['status'] == 'success':
             return data['url']
+        else:
+            raise FailedToStreamException('Request failed: %r' % (data, ))
 
     if torrent_body:
         r = requests.post(url, auth=(username, password), params=params, data=torrent_body)
@@ -53,5 +57,40 @@ def stream_torrent(remote_control_url, infohash=None, path=None, wait_for_end_pi
         data = r.json()
         if data['status'] == 'success':
             return data['url']
+        else:
+            raise FailedToStreamException('Request failed: %r' % (data, ))
 
     raise FailedToStreamException('Streaming was never successful')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Stream some torrents")
+    parser.add_argument('url', help="Full API Url including auth info")
+    parser.add_argument('--infohash', nargs='?', help="Infohash of torrent to stream")
+    parser.add_argument('--path', nargs='?', help="Path to file within the torrent to stream")
+    parser.add_argument('--label', nargs='?', help="Label to add the torrent with")
+    parser.add_argument('--torrent', nargs='?', help="Path to the torrent to stream", type=argparse.FileType(mode='rb'))
+    parser.add_argument('--skip_wait_for_end_pieces', help="Wait until client downloaded the first and last piece of the torrent", action='store_false')
+
+
+    args = parser.parse_args()
+
+    kwargs = {
+        'remote_control_url': args.url,
+        'wait_for_end_pieces': args.skip_wait_for_end_pieces
+    }
+
+    if args.infohash:
+        kwargs['infohash'] = args.infohash
+
+    if args.path:
+        kwargs['path'] = args.path
+
+    if args.label:
+        kwargs['label'] = args.label
+
+    if args.torrent:
+        kwargs['torrent_body'] = args.torrent.read()
+
+    result = stream_torrent(**kwargs)
+    print('URL %s' % (result, ))

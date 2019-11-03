@@ -37,6 +37,7 @@
 #    statement from all source files in the program, then also delete it here.
 #
 
+import base64
 import json
 import logging
 import os
@@ -57,6 +58,7 @@ from deluge.plugins.pluginbase import CorePluginBase
 
 from twisted.internet import reactor, defer, task
 from twisted.web import server, client
+from twisted.web.resource import Resource as TwistedResource
 
 from thomas import router, Item, OutputBase
 
@@ -94,6 +96,7 @@ DEFAULT_PREFS = {
     'ssl_source': 'daemon',
     'ssl_priv_key_path': '',
     'ssl_cert_path': '',
+    'aggressive_prioritizing': False,
 }
 
 logger = logging.getLogger(__name__)
@@ -126,9 +129,10 @@ def get_torrent(infohash):
 
 
 class Torrent(object):
-    def __init__(self, torrent_handler, infohash):
+    def __init__(self, torrent_handler, infohash, aggressive_prioritizing=False):
         self.torrent_handler = torrent_handler
         self.infohash = infohash
+        self.aggressive_prioritizing = aggressive_prioritizing
 
         self.filesets = {}
         self.readers = {}
@@ -176,7 +180,7 @@ class Torrent(object):
 
             if file_piece_count <= MIN_PIECE_COUNT_FOR_CHAIN_CONSIDERATION:
                 is_next_in_chain = True
-            else:
+            elif self.readers:
                 best_reader_from_byte = max(reader[1] for reader in self.readers.values() if reader[1] <= from_byte)
                 best_reader_piece = best_reader_from_byte // self.piece_length
                 downloading_pieces = self.get_currently_downloading()
@@ -188,9 +192,11 @@ class Torrent(object):
                 piece_diff = best_reader_piece - unfinished_piece - 1
                 if unfinished_piece >= best_reader_piece or piece_diff / file_piece_count <= WITHIN_CHAIN_PERCENTAGE:
                     is_next_in_chain = True
+            else:
+                is_next_in_chain = True
 
-            if not is_next_in_chain:
-                logger.debug('Not a next-in-chain piece, setting priority now')
+            if not is_next_in_chain or self.aggressive_prioritizing:
+                logger.debug('Not a next-in-chain piece or aggressive prioritization enabled, setting priority now')
                 self.torrent.handle.set_piece_deadline(needed_piece, 0)
                 self.torrent.handle.piece_priority(needed_piece, MAX_PIECE_PRIORITY)
 
@@ -383,9 +389,10 @@ class Torrent(object):
 
 
 class TorrentHandler(object):
-    def __init__(self, reset_priorities_on_finish):
+    def __init__(self, reset_priorities_on_finish, aggressive_prioritizing=False):
         self.torrents = {}
         self.reset_priorities_on_finish = reset_priorities_on_finish
+        self.aggressive_prioritizing = aggressive_prioritizing
 
         self.alerts = component.get("AlertManager")
         self.alerts.register_handler("torrent_removed_alert", self.on_alert_torrent_removed)
@@ -488,7 +495,7 @@ class TorrentHandler(object):
 
     def get_torrent(self, infohash):
         if infohash not in self.torrents:
-            self.torrents[infohash] = Torrent(self, infohash)
+            self.torrents[infohash] = Torrent(self, infohash, self.aggressive_prioritizing)
         return self.torrents[infohash]
 
     @defer.inlineCallbacks
@@ -612,58 +619,61 @@ class StreamResource(Resource):
 
     @defer.inlineCallbacks
     def render_POST(self, request):
-        infohash = request.args.get('infohash')
-        path = request.args.get('path')
-        wait_for_end_pieces = bool(request.args.get('wait_for_end_pieces'))
-        label = request.args.get('label')
+        infohash = request.args.get(b'infohash')
+        path = request.args.get(b'path')
+        wait_for_end_pieces = bool(request.args.get(b'wait_for_end_pieces'))
+        label = request.args.get(b'label')
 
         if path:
-            path = path[0]
+            path = path[0].decode('utf-8')
         else:
             path = None
 
         if infohash:
-            infohash = infohash[0]
+            infohash = infohash[0].decode('utf-8')
         else:
-            infohash = infohash
+            infohash = None
 
         if label:
-            label = label[0]
+            label = label[0].decode('utf-8')
         else:
             label = None
 
         payload = request.content.read()
         if not payload:
-            defer.returnValue(json.dumps({'status': 'error', 'message': 'invalid torrent'}))
+            defer.returnValue(json.dumps({'status': 'error', 'message': 'invalid torrent'}).encode('utf-8'))
 
         result = yield self.client.stream_torrent(infohash=infohash, filedump=payload, filepath_or_index=path, wait_for_end_pieces=wait_for_end_pieces, label=label)
-        defer.returnValue(json.dumps(result))
+        defer.returnValue(json.dumps(result).encode('utf-8'))
 
     @defer.inlineCallbacks
     def render_GET(self, request):
-        infohash = request.args.get('infohash')
-        path = request.args.get('path')
-        wait_for_end_pieces = bool(request.args.get('wait_for_end_pieces'))
+        infohash = request.args.get(b'infohash')
+        path = request.args.get(b'path')
+        wait_for_end_pieces = bool(request.args.get(b'wait_for_end_pieces'))
 
         if not infohash:
-            defer.returnValue(json.dumps({'status': 'error', 'message': 'missing infohash'}))
+            defer.returnValue(json.dumps({'status': 'error', 'message': 'missing infohash'}).encode('utf-8'))
 
-        infohash = infohash[0]
+        infohash = infohash[0].decode('utf-8')
 
         if path:
-            path = path[0]
+            path = path[0].decode('utf-8')
         else:
             path = None
 
         result = yield self.client.stream_torrent(infohash=infohash, filepath_or_index=path, wait_for_end_pieces=wait_for_end_pieces)
-        defer.returnValue(json.dumps(result))
+        defer.returnValue(json.dumps(result).encode('utf-8'))
 
 
 class Core(CorePluginBase):
     listening = None
     base_url = None
 
+    _is_enabled = False
+
     def enable(self):
+        self._is_enabled = True
         self.config = deluge.configmanager.ConfigManager("streaming.conf", DEFAULT_PREFS)
 
         try:
@@ -680,18 +690,18 @@ class Core(CorePluginBase):
 
         self.thomas_http_output = http_output
 
-        resource = Resource()
-        resource.putChild('file', http_output.resource)
+        resource = TwistedResource()
+        resource.putChild(b'file', http_output.resource)
         if self.config['allow_remote']:
-            resource.putChild('stream', StreamResource(username=self.config['remote_username'],
+            resource.putChild(b'stream', StreamResource(username=self.config['remote_username'],
                                                        password=self.config['remote_password'],
                                                        client=self))
 
-        base_resource = Resource()
-        base_resource.putChild('streaming', resource)
+        base_resource = TwistedResource()
+        base_resource.putChild(b'streaming', resource)
         self.site = server.Site(base_resource)
 
-        self.torrent_handler = TorrentHandler(self.config['download_only_streamed'] == False)
+        self.torrent_handler = TorrentHandler(self.config['download_only_streamed'] == False, self.config['aggressive_prioritizing'])
 
         plugin_manager = component.get("CorePluginManager")
         logger.warning('plugins %s' % (plugin_manager.get_enabled_plugins(), ))
@@ -748,6 +758,11 @@ class Core(CorePluginBase):
 
     @defer.inlineCallbacks
     def disable(self):
+        if not self._is_enabled:
+            defer.returnValue(None)
+
+        self._is_enabled = False
+
         self.site.stopFactory()
         self.torrent_handler.shutdown()
         self.thomas_http_output.stop()
@@ -828,7 +843,7 @@ class Core(CorePluginBase):
 
             core = component.get("Core")
             try:
-                yield core.add_torrent_file('file.torrent', filedump.encode('base64'), {'add_paused': True})
+                yield core.add_torrent_file('file.torrent', base64.b64encode(filedump), {'add_paused': True})
                 if label and 'Label' in component.get('CorePluginManager').get_enabled_plugins():
                     label_plugin = component.get('CorePlugin.Label')
                     if label not in label_plugin.get_labels():

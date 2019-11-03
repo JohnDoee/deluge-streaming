@@ -270,6 +270,13 @@ PreferencePage = Ext.extend(Ext.Panel, {
             boxLabel: 'Auto-open stream protocol urls',
             style: 'margin-left: 12px;'
         }));
+
+        om.bind('aggressive_prioritizing', fieldset.add({
+            xtype: 'checkbox',
+            name: 'aggressive_prioritizing',
+            boxLabel: 'Aggressive prioritizing',
+            style: 'margin-left: 12px;'
+        }));
     },
 
     onApply: function() {
