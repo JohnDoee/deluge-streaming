@@ -1,7 +1,7 @@
 # Streaming Plugin
 https://github.com/JohnDoee/deluge-streaming
 
-(c)2019 by Anders Jensen <johndoee@tidalstream.org>
+(c)2020 by Anders Jensen <johndoee@tridentstream.org>
 
 ## Description
 
@@ -106,6 +106,11 @@ List of URL GET Arguments
 ```
 
 # Version Info
+
+## Version 0.12.0
+
+* Moved to reading pieces through Deluge to avoid unflushed data
+* Fixed Deluge 2 / libtorrent related bug
 
 ## Version 0.11.0
 * Initial support for Deluge 2 / Python 3
