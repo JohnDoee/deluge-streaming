@@ -65,7 +65,6 @@ from thomas import router, Item, OutputBase
 from .resource import Resource
 from .torrentfile import DelugeTorrentInput
 
-defer.setDebugging(True)
 router.register_handler(DelugeTorrentInput.plugin_name, DelugeTorrentInput, True, False, False)
 
 VIDEO_STREAMABLE_EXTENSIONS = ['mkv', 'mp4', 'iso', 'ogg', 'ogm', 'm4v']
@@ -119,7 +118,7 @@ def get_torrent(infohash):
             # Ensure file_priorities option is populated.
             self.set_file_priorities([])
 
-        return self.options["file_priorities"]
+        return list(self.options["file_priorities"])
 
     torrent = component.get("TorrentManager").torrents.get(infohash, None)
     if torrent and not hasattr(torrent, 'get_file_priorities'):
@@ -200,7 +199,7 @@ class Torrent(object):
                 self.torrent.handle.set_piece_deadline(needed_piece, 0)
                 self.torrent.handle.piece_priority(needed_piece, MAX_PIECE_PRIORITY)
 
-            file_priorities = self.torrent.get_file_priorities()
+            file_priorities = list(self.torrent.get_file_priorities())
             if file_priorities[f['index']] != MAX_FILE_PRIORITY:
                 logger.debug('Also setting file to max %r' % (f, ))
                 file_priorities[f['index']] = MAX_FILE_PRIORITY
@@ -224,7 +223,8 @@ class Torrent(object):
             logger.debug('Calling read again to get the real number')
             return self.can_read(from_byte)
         else:
-            return ((last_available_piece - needed_piece) * self.piece_length) + self.piece_length - rest
+            logger.debug('Really last available piece is %s' % (last_available_piece, ))
+            return ((last_available_piece - needed_piece) * self.piece_length) + self.piece_length - rest, last_available_piece
 
     def is_idle(self):
         return not self.readers and self.last_activity + TORRENT_CLEANUP_INTERVAL < datetime.now()
@@ -275,7 +275,7 @@ class Torrent(object):
             logger.debug('We had a fileset not started, must_whitelist:%r first_files:%r cannot_blacklist:%r' % (must_whitelist, first_files, cannot_blacklist))
             status = self.torrent.get_status(['files', 'file_progress'])
 
-            file_priorities = self.torrent.get_file_priorities()
+            file_priorities = list(self.torrent.get_file_priorities())
             for f, progress in zip(status['files'], status['file_progress']):
                 i = f['index']
                 if progress == 1.0:
@@ -314,7 +314,7 @@ class Torrent(object):
                         else:
                             fileset_ranges[fileset_hash] = fileset['files'].index(path)
 
-            file_priorities = self.torrent.get_file_priorities()
+            file_priorities = list(self.torrent.get_file_priorities())
             logger.debug('Fileset heads: %r' % (fileset_ranges, ))
             for fileset_hash, first_file in fileset_ranges.items():
                 fileset = self.filesets[fileset_hash]
@@ -387,6 +387,14 @@ class Torrent(object):
         if fileset_hash not in self.filesets:
             self.filesets[fileset_hash] = {'started': False, 'files': files}
 
+    def request_piece(self, piece):
+        self.torrent.handle.read_piece(piece)
+
+    def new_piece_available(self, piece, data):
+        logger.debug("New pice available: %s" % (piece, ))
+        for reader in self.readers.keys():
+            reader.new_piece_available(piece, data)
+
 
 class TorrentHandler(object):
     def __init__(self, reset_priorities_on_finish, aggressive_prioritizing=False):
@@ -397,6 +405,7 @@ class TorrentHandler(object):
         self.alerts = component.get("AlertManager")
         self.alerts.register_handler("torrent_removed_alert", self.on_alert_torrent_removed)
         self.alerts.register_handler("torrent_finished_alert", self.on_alert_torrent_finished)
+        self.alerts.register_handler("read_piece_alert", self.on_alert_read_piece)
 
         self.cleanup_looping_call = task.LoopingCall(self.cleanup)
         self.cleanup_looping_call.start(60)
@@ -426,6 +435,18 @@ class TorrentHandler(object):
 
         if self.reset_priorities_on_finish:
             self.torrents[infohash].reset_priorities()
+
+    def on_alert_read_piece(self, alert):
+        try:
+            infohash = str(alert.handle.info_hash())
+        except (RuntimeError, KeyError):
+            logger.warning('Failed to handle on read piece alert')
+            return
+
+        if infohash not in self.torrents:
+            return
+
+        self.torrents[infohash].new_piece_available(alert.piece, alert.buffer)
 
     def shutdown(self):
         for torrent in self.torrents.values():

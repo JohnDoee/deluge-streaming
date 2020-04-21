@@ -41,8 +41,8 @@ from setuptools import setup, find_packages
 
 __plugin_name__ = "Streaming"
 __author__ = "Anders Jensen"
-__author_email__ = "johndoee@tidalstream.org"
-__version__ = "0.11.0"
+__author_email__ = "johndoee@tridentstream.org"
+__version__ = "0.12.0"
 __url__ = "https://github.com/JohnDoee/deluge-streaming"
 __license__ = "GPLv3"
 __description__ = "Enables streaming of files while downloading them."

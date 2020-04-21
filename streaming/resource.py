@@ -32,7 +32,7 @@ class Resource(TwistedResource):
 
             if not authenticated:
                 request.setResponseCode(401)
-                return 'Unauthorized'
+                return b'Unauthorized'
 
         m = getattr(self, 'render_' + request.method.decode('utf-8'), None)
         if not m:
