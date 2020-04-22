@@ -32,7 +32,7 @@ class DelugeTorrentInput(InputBase):
         self.path = path
         self.piece_buffer = {}
         self.requested_pieces = {}
-        self.piece_request_queue = []
+        self.piece_consumption_time = []
         self.size, self.filename, self.content_type = self.get_info()
 
     def get_info(self):

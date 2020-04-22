@@ -109,6 +109,10 @@ List of URL GET Arguments
 
 ## Version 0.12.0
 
+* Fixed small breaking bug
+
+## Version 0.12.0
+
 * Moved to reading pieces through Deluge to avoid unflushed data
 * Fixed Deluge 2 / libtorrent related bug
 
