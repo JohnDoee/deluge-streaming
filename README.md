@@ -107,7 +107,11 @@ List of URL GET Arguments
 
 # Version Info
 
-## Version 0.12.0
+## Version 0.12.2
+
+* Added support for TLS 1.2
+
+## Version 0.12.1
 
 * Fixed small breaking bug
 

@@ -56,7 +56,7 @@ from deluge._libtorrent import lt
 from deluge.core.rpcserver import export
 from deluge.plugins.pluginbase import CorePluginBase
 
-from twisted.internet import reactor, defer, task
+from twisted.internet import reactor, defer, task, error
 from twisted.web import server, client
 from twisted.web.resource import Resource as TwistedResource
 
@@ -620,9 +620,11 @@ class ServerContextFactory(object):
     def getContext(self):
         from OpenSSL import SSL
 
-        method = getattr(SSL, 'TLSv1_1_METHOD', None)
-        if method is None:
-            method = getattr(SSL, 'SSLv23_METHOD', None)
+        methods_names = ['TLSv1_2_METHOD', 'TLSv1_1_METHOD', 'SSLv23_METHOD']
+        for method_name in methods_names:
+            method = getattr(SSL, method_name, None)
+            if method is not None:
+                break
 
         ctx = SSL.Context(method)
         ctx.use_certificate_file(self._cert_file)
@@ -743,13 +745,19 @@ class Core(CorePluginBase):
                 try:
                     self.listening = reactor.listenSSL(self.config['port'], self.site, context, interface=self.config['ip'])
                 except:
-                    self.listening = reactor.listenSSL(self.config['port'], self.site, context, interface='0.0.0.0')
+                    try:
+                        self.listening = reactor.listenSSL(self.config['port'], self.site, context, interface='0.0.0.0')
+                    except error.CannotListenError:
+                        logger.warning("Unable to listen to anything")
                 self.base_url += 's'
             else:
                 try:
                     self.listening = reactor.listenTCP(self.config['port'], self.site, interface=self.config['ip'])
                 except:
-                    self.listening = reactor.listenTCP(self.config['port'], self.site, interface='0.0.0.0')
+                    try:
+                        self.listening = reactor.listenTCP(self.config['port'], self.site, interface='0.0.0.0')
+                    except error.CannotListenError:
+                        logger.warning("Unable to listen to anything")
 
             port = self.config['port']
             ip = self.config['ip']
@@ -819,9 +827,6 @@ class Core(CorePluginBase):
     def check_webui(self):
         plugin_manager = component.get("CorePluginManager")
         return 'WebUi' in plugin_manager.get_enabled_plugins()
-
-    def check_config(self):
-        pass
 
     @export
     @defer.inlineCallbacks
