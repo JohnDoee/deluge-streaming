@@ -29,7 +29,7 @@ If you want to stream from a non-local computer, e.g. your seedbox, you will nee
 
 ## Open directly in your video player
 
-By using a small tool it is possible to it's possible to open streams directly in VLC or another media player.
+By using a small tool it is possible to open streams directly in VLC or another media player.
 
 * Download and install [StreamProtocol](http://streamprotocol.tidalstream.org/)
 * Go into Deluge Streaming options and enable "Use stream protocol urls"
